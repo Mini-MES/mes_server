@@ -1,4 +1,5 @@
-﻿using mes_server.Models.MasterData;
+﻿using mes_server.Models.Enum;
+using mes_server.Models.MasterData;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -23,6 +24,6 @@ namespace mes_server.Models.Production
 
         [Required]
         [MaxLength(20)]
-        public string Status { get; set; } = "Running";
+        public LotStatus Status { get; set; }
     }
 }
