@@ -7,14 +7,14 @@ namespace mes_server.Models.MasterData
     {
         [Required]
         [MaxLength(50)]
-        public string ProductID { get; set; } = string.Empty;
+        public string ProductID { get; set; } = null!;
 
         [ForeignKey("ProductID")]
         public ProductMaster? Product { get; set; }
 
         [Required]
         [MaxLength(20)]
-        public string MaterialID { get; set; } = string.Empty;
+        public string MaterialID { get; set; } = null!;
 
         [ForeignKey("MaterialID")]
 

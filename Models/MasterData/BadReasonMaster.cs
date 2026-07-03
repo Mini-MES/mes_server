@@ -11,6 +11,6 @@ namespace mes_server.Models.MasterData
 
         [Required]
         [MaxLength(100)]
-        public string ReasonDescription { get; set; } = string.Empty;
+        public string ReasonDescription { get; set; } = null!;
     }
 }

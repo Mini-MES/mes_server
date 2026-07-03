@@ -9,12 +9,12 @@ namespace mes_server.Models.MasterData
 
         [Required]
         [MaxLength(50)]
-        public string UserName { get; set; } = string.Empty;
+        public string UserName { get; set; } = null!;
 
         [Required]
         public string UserRole { get; set; } = "Operator";
 
         [Required]
-        public string PasswordHash { get; set; } = string.Empty;
+        public string PasswordHash { get; set; } = null!;
     }
 }

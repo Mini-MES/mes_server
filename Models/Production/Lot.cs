@@ -8,7 +8,7 @@ namespace mes_server.Models.Production
     public class Lot
     {
         [Key]
-        public string LotID { get; set; } = string.Empty;
+        public string LotID { get; set; } = null!;
 
         [Required]
         public int OrderID { get; set; }

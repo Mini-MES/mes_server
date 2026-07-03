@@ -9,7 +9,7 @@ namespace mes_server.Models.MasterData
 
         [Required]
         [MaxLength(50)]
-        public string ProcessName { get; set; } = string.Empty;
+        public string ProcessName { get; set; } = null!;
 
         [Required]
         public int SequenceOrder { get; set; }

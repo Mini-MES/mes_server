@@ -6,11 +6,11 @@ namespace mes_server.Models.MasterData
     {
         [Key]
         [MaxLength(20)]
-        public string MaterialID { get; set; } = string.Empty;
+        public string MaterialID { get; set; } = null!;
 
         [Required]
         [MaxLength(50)] 
-        public string MaterialName { get; set;} = string.Empty;
+        public string MaterialName { get; set; } = null!;
 
         [Required]
         public int StockQty { get; set; }

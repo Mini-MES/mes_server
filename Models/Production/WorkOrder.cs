@@ -11,7 +11,7 @@ namespace mes_server.Models.Production
 
         [Required]
         [MaxLength(50)]
-        public string ProductID { get; set; } = string.Empty;
+        public string ProductID { get; set; } = null!;
 
         [ForeignKey("ProductID")]
         public ProductMaster? Product { get; set; }
