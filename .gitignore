@@ -1,0 +1,52 @@
+# --- .NET 기본 설정 ---
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Ll]og/
+[Ll]ogs/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+ScaffoldingReadMe.txt
+*.nupkg
+*.snupkg
+.env
+~$*
+*~
+CodeCoverage/
+*.binlog
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# --- Visual Studio 및 개발 환경 설정 ---
+.vs/
+*.user
+*.suo
+*.userosscache
+
+# --- 보안 및 데이터 설정 ---
+# 실제 운영 환경 설정 파일은 Git에서 제외
+appsettings.json
+appsettings.Development.json
+appsettings.Local.json
+*.Secret.json
+
+# 로컬 데이터베이스 파일
+*.mdf
+*.ldf
+*.db
+*.sqlite
+
+# --- 패키지 및 라이브러리 ---
+# NuGet 복원 폴더
+packages/
