@@ -1,4 +1,5 @@
-﻿using mes_server.Models.MasterData;
+﻿using mes_server.Models.Enum;
+using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -20,7 +21,7 @@ namespace mes_server.Models.History
         [Required]
         public int ProcessID { get; set; }
         [ForeignKey("ProcessID")]
-        public MasterData.ProcessMaster? Process { get; set; }
+        public ProcessMaster? Process { get; set; }
 
         [MaxLength(20)]
         public string? ToolID { get; set; }
@@ -28,7 +29,7 @@ namespace mes_server.Models.History
         public Tool? Tool { get; set; }
 
         [MaxLength(20)]
-        public string? ReasonCode { get; set; }
+        public ReasonCode ReasonCode { get; set; }
         [ForeignKey("ReasonCode")]
         public BadReasonMaster? BadReason { get; set; }
 

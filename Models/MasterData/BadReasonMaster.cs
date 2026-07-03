@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using mes_server.Models.Enum;
+using System.ComponentModel.DataAnnotations;
 
 namespace mes_server.Models.MasterData
 {
@@ -6,7 +7,7 @@ namespace mes_server.Models.MasterData
     {
         [Key]
         [MaxLength(20)]
-        public string ReasonCode { get; set; } = string.Empty;
+        public ReasonCode ReasonCode { get; set; }
 
         [Required]
         [MaxLength(100)]
