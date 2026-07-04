@@ -6,6 +6,7 @@ namespace mes_server.Models.Production
     {
         [Key]
         [Required]
+        [MaxLength(20)]
         public string ToolID { get; set; } = null!;
 
         [Required]

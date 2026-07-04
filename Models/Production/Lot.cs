@@ -8,6 +8,7 @@ namespace mes_server.Models.Production
     public class Lot
     {
         [Key]
+        [MaxLength(20)]
         public string LotID { get; set; } = null!;
 
         [Required]
