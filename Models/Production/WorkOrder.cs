@@ -16,6 +16,8 @@ namespace mes_server.Models.Production
         [ForeignKey("ProductID")]
         public ProductMaster? Product { get; set; }
 
+        public ICollection<Lot> Lots { get; set; } = new List<Lot>();
+
         [Required]
         public int TargetQty { get; set; }
 
