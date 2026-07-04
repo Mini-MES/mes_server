@@ -6,7 +6,7 @@ namespace mes_server.Models.MasterData
     public class BadReasonMaster
     {
         [Key]
-        [MaxLength(20)]
+        [Required]
         public ReasonCode ReasonCode { get; set; }
 
         [Required]

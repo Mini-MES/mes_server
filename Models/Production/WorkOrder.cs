@@ -7,7 +7,7 @@ namespace mes_server.Models.Production
     public class WorkOrder
     {
         [Key]
-        public int OrderId { get; set; }
+        public int OrderID { get; set; }
 
         [Required]
         [MaxLength(50)]

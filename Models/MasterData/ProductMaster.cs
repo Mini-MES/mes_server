@@ -16,7 +16,6 @@ namespace mes_server.Models.MasterData
         public ICollection<BOM> BOMs { get; set; } = new List<BOM>();
 
         [Required]
-        [MaxLength(20)]
         public ItemType ItemType { get; set; } // 완제품/반제품을 나누는 역할
 
         [Required]

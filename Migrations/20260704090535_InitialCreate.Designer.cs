@@ -12,7 +12,7 @@ using mes_server.Data;
 namespace mes_server.Migrations
 {
     [DbContext(typeof(MESDbContext))]
-    [Migration("20260704073913_InitialCreate")]
+    [Migration("20260704090535_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -51,10 +51,10 @@ namespace mes_server.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("ReasonCode")
-                        .HasMaxLength(20)
                         .HasColumnType("int");
 
                     b.Property<string>("ToolID")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -132,7 +132,6 @@ namespace mes_server.Migrations
             modelBuilder.Entity("mes_server.Models.MasterData.BadReasonMaster", b =>
                 {
                     b.Property<int>("ReasonCode")
-                        .HasMaxLength(20)
                         .HasColumnType("int");
 
                     b.Property<string>("ReasonDescription")
@@ -173,7 +172,6 @@ namespace mes_server.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("ItemType")
-                        .HasMaxLength(20)
                         .HasColumnType("int");
 
                     b.Property<string>("ProductName")
@@ -247,7 +245,6 @@ namespace mes_server.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("Status")
-                        .HasMaxLength(20)
                         .HasColumnType("int");
 
                     b.HasKey("LotID");
@@ -282,11 +279,11 @@ namespace mes_server.Migrations
 
             modelBuilder.Entity("mes_server.Models.Production.WorkOrder", b =>
                 {
-                    b.Property<int>("OrderId")
+                    b.Property<int>("OrderID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderID"));
 
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
@@ -305,7 +302,7 @@ namespace mes_server.Migrations
                     b.Property<int>("TargetQty")
                         .HasColumnType("int");
 
-                    b.HasKey("OrderId");
+                    b.HasKey("OrderID");
 
                     b.HasIndex("ProductID");
 
@@ -335,7 +332,8 @@ namespace mes_server.Migrations
                     b.HasOne("mes_server.Models.Production.Tool", "Tool")
                         .WithMany()
                         .HasForeignKey("ToolID")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("mes_server.Models.MasterData.User", "User")
                         .WithMany()

@@ -24,7 +24,6 @@ namespace mes_server.Models.Production
         public ProcessMaster? CurrentProcess { get; set; }
 
         [Required]
-        [MaxLength(20)]
         public LotStatus Status { get; set; }
     }
 }

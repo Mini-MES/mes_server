@@ -23,12 +23,13 @@ namespace mes_server.Models.History
         [ForeignKey("ProcessID")]
         public ProcessMaster? Process { get; set; }
 
+        [Required]
         [MaxLength(20)]
         public string? ToolID { get; set; }
         [ForeignKey("ToolID")]
         public Tool? Tool { get; set; }
 
-        [MaxLength(20)]
+        [Required]
         public ReasonCode ReasonCode { get; set; }
         [ForeignKey("ReasonCode")]
         public BadReasonMaster? BadReason { get; set; }

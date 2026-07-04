@@ -15,7 +15,7 @@ namespace mes_server.Migrations
                 name: "BadReasonMasters",
                 columns: table => new
                 {
-                    ReasonCode = table.Column<int>(type: "int", maxLength: 20, nullable: false),
+                    ReasonCode = table.Column<int>(type: "int", nullable: false),
                     ReasonDescription = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
@@ -43,7 +43,7 @@ namespace mes_server.Migrations
                 {
                     ProductID = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     ProductName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    ItemType = table.Column<int>(type: "int", maxLength: 20, nullable: false),
+                    ItemType = table.Column<int>(type: "int", nullable: false),
                     StockQty = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -97,7 +97,7 @@ namespace mes_server.Migrations
                 name: "WorkOrders",
                 columns: table => new
                 {
-                    OrderId = table.Column<int>(type: "int", nullable: false)
+                    OrderID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ProductID = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     TargetQty = table.Column<int>(type: "int", nullable: false),
@@ -107,7 +107,7 @@ namespace mes_server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_WorkOrders", x => x.OrderId);
+                    table.PrimaryKey("PK_WorkOrders", x => x.OrderID);
                     table.ForeignKey(
                         name: "FK_WorkOrders_ProductMasters_ProductID",
                         column: x => x.ProductID,
@@ -170,7 +170,7 @@ namespace mes_server.Migrations
                     LotID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     OrderID = table.Column<int>(type: "int", nullable: false),
                     CurrentProcessID = table.Column<int>(type: "int", nullable: false),
-                    Status = table.Column<int>(type: "int", maxLength: 20, nullable: false)
+                    Status = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -185,7 +185,7 @@ namespace mes_server.Migrations
                         name: "FK_Lots_WorkOrders_OrderID",
                         column: x => x.OrderID,
                         principalTable: "WorkOrders",
-                        principalColumn: "OrderId",
+                        principalColumn: "OrderID",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -197,8 +197,8 @@ namespace mes_server.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     LotID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     ProcessID = table.Column<int>(type: "int", nullable: false),
-                    ToolID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    ReasonCode = table.Column<int>(type: "int", maxLength: 20, nullable: false),
+                    ToolID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    ReasonCode = table.Column<int>(type: "int", nullable: false),
                     UserID = table.Column<int>(type: "int", nullable: false),
                     InputQty = table.Column<int>(type: "int", nullable: false),
                     GoodQty = table.Column<int>(type: "int", nullable: false),
