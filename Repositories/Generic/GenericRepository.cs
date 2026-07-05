@@ -7,6 +7,8 @@ namespace mes_server.Repositories.Generic
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         private readonly MESDbContext _context;
+
+        protected MESDbContext Context => _context;
         private readonly DbSet<T> _dbSet;
 
         public GenericRepository(MESDbContext context)
