@@ -14,7 +14,7 @@ namespace mes_server.Repositories.Production
 
         public async Task<IEnumerable<WorkOrder>> GetAllWithDetailsAsync()
         {
-            return await _context.WorkOrders
+            return await Context.WorkOrders
                 .Include(wo => wo.Product)
                 .ToListAsync();
     
@@ -22,7 +22,7 @@ namespace mes_server.Repositories.Production
 
         public async Task<WorkOrder?> GetWorkOrderDetailAsync(int workOrderId)
         {
-            return await _context.WorkOrders
+            return await Context.WorkOrders
                 .Include(wo => wo.Product)
                 .Include(wo => wo.Lots)
                 .FirstOrDefaultAsync(wo => wo.OrderID == workOrderId);
