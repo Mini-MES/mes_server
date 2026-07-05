@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace mes_server.Repositories.History
 {
-    public class ToolRepository : GenericRepository<ToolHistory>, IToolHistoryRepository
+    public class ToolHistoryRepository : GenericRepository<ToolHistory>, IToolHistoryRepository
     {
-        public ToolRepository(MESDbContext context) : base(context)
+        public ToolHistoryRepository(MESDbContext context) : base(context)
         {
         }
 

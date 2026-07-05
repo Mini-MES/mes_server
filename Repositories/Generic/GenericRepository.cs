@@ -23,7 +23,7 @@ namespace mes_server.Repositories.Generic
             await _dbSet.AddAsync(entity);
         }
 
-        public void DeleteById(T entity)
+        public void Delete(T entity)
         {
             _dbSet.Remove(entity);
         }
@@ -33,9 +33,9 @@ namespace mes_server.Repositories.Generic
             return await _dbSet.ToListAsync();
         }
 
-        public async Task<T?> GetByIdAsync(object id)
+        public async Task<T?> GetByIdAsync(params object[] keyValues)
         {
-            return await _dbSet.FindAsync(id);
+            return await _dbSet.FindAsync(keyValues);
         }
 
         public async Task SaveChangesAsync()
