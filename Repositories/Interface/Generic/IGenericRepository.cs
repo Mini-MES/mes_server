@@ -1,4 +1,6 @@
-﻿namespace mes_server.Repositories.Interface.Generic
+﻿using System.Linq.Expressions;
+
+namespace mes_server.Repositories.Interface.Generic
 {
     public interface IGenericRepository<T> where T : class
     {
@@ -8,5 +10,6 @@
         Task UpdateAsync(T entity);
         Task DeleteAsync(T entity);
         Task SaveChangesAsync();
+        Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
     }
 }
