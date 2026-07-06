@@ -29,7 +29,7 @@ namespace mes_server.Services
         public async Task<ProcessMaster?> GetProcessBySequenceAsync(int sequence)
         {
             var process = await _processMasterRepository.FindAsync(p => p.SequenceOrder == sequence);
-            return process.FirstOrDefault();
+            return process?.SingleOrDefault();
         }
 
         public async Task<IEnumerable<ProcessMaster>> GetProcessListAsync()

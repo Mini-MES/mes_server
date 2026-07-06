@@ -21,6 +21,7 @@ namespace mes_server.Services
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
             await _userRepository.CreateAsync(user);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<bool> AuthenticateAsync(string userName, string password)

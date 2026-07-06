@@ -22,6 +22,9 @@ namespace mes_server.Models.Production
         [Required]
         public int TargetQty { get; set; }
 
+        public int TotalGoodQty { get; set; } 
+        public int TotalBadQty { get; set; }
+
         [Required]
         public OrderStatus Status { get; set; } = OrderStatus.Created;
 

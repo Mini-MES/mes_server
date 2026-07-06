@@ -23,6 +23,8 @@ namespace mes_server.Models.Production
         [ForeignKey("CurrentProcessID")]
         public ProcessMaster? CurrentProcess { get; set; }
 
+        public int TotalBadQty { get; set; }
+
         [Required]
         public LotStatus Status { get; set; }
     }

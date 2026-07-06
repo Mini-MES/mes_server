@@ -16,15 +16,22 @@ namespace mes_server.Services
         private readonly IWorkOrderRepository _workOrderRepository;
         private readonly ILotRepository _lotRepository;
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
+        private readonly IInventoryService _inventoryService;
         private readonly MESDbContext _context;
 
-        public ProductionService(MESDbContext context, IPerformanceRepository performanceRepository, IWorkOrderRepository workOrderRepository, ILotRepository lotRepository, IGenericRepository<ProcessMaster> processMasterRepository)
+        public ProductionService(MESDbContext context, 
+            IPerformanceRepository performanceRepository,
+            IWorkOrderRepository workOrderRepository, 
+            ILotRepository lotRepository, 
+            IGenericRepository<ProcessMaster> processMasterRepository,
+            IInventoryService inventoryService)
         {
             _context = context;
             _performanceRepository = performanceRepository;
             _workOrderRepository = workOrderRepository;
             _lotRepository = lotRepository;
             _processMasterRepository = processMasterRepository;
+            _inventoryService = inventoryService;
         }
 
         public async Task ChangeLotProcessAsync(string lotId, int nextProcessId)
@@ -58,6 +65,14 @@ namespace mes_server.Services
 
         public async Task CreateWorkOrderAsync(WorkOrder workOrder)
         {
+            bool isAvailable = await _inventoryService.CheckMaterialAvailability(workOrder.ProductID, workOrder.TargetQty);
+            if (!isAvailable)
+            {
+                throw new InvalidOperationException("재고가 부족합니다.");
+            }
+
+            workOrder.Status = OrderStatus.Created;
+
             await _workOrderRepository.CreateAsync(workOrder);
             await _context.SaveChangesAsync();
         }
@@ -71,17 +86,39 @@ namespace mes_server.Services
         public async Task RegisterPerformanceAsync(Performance perf)
         {
             await _performanceRepository.CreateAsync(perf);
-            var totalGoodQty = await _performanceRepository.GetTotalGoodQtyByOrderIdAsync(perf.WorkOrderID);
+            await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.GoodQty);
 
+            var lot = await _lotRepository.GetByIdAsync(perf.LotID);
             var workOrder = await _workOrderRepository.GetByIdAsync(perf.WorkOrderID);
-            if (workOrder != null && workOrder.Status != OrderStatus.Completed) 
-            { 
-                if (totalGoodQty >= workOrder.TargetQty)
+
+            if (workOrder != null)
+            {
+                workOrder.TotalBadQty += perf.BadQty;
+                workOrder.TotalGoodQty += perf.GoodQty;
+            }
+
+            if (perf.BadQty > 0 && lot != null)
+            {
+                lot.Status = LotStatus.HOLD; 
+            }
+
+            var processList = await _processMasterRepository.GetAllAsync();
+            var lastProcess = processList.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
+            if (lastProcess != null && perf.ProcessID == lastProcess)
+            {
+                await _inventoryService.ReceiveFinishedProductAsync(perf.WorkOrderID, perf.GoodQty);
+            }
+
+
+            if (workOrder != null && workOrder.Status != OrderStatus.Completed)
+            {
+                if (workOrder.TotalGoodQty >= workOrder.TargetQty)
                 {
                     workOrder.Status = OrderStatus.Completed;
                     await CompleteWorkOrderAsync(workOrder.OrderID);
                 }
             }
+
             await _context.SaveChangesAsync();
         }
 

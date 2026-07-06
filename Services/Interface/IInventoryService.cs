@@ -1,9 +1,5 @@
-﻿using mes_server.Models.MasterData;
-
-namespace mes_server.Services.Interface
+﻿namespace mes_server.Services.Interface
 {
-    public interface IInventoryService
-    {
         public interface IInventoryService
         {
             Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty);
@@ -14,5 +10,4 @@ namespace mes_server.Services.Interface
 
             Task ShipFinishedProductAsync(string productId, int workOrderId, int quantity, string destination);
         }
-    }
 }
