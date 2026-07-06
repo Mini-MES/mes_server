@@ -40,6 +40,7 @@ namespace mes_server.Services
 
             if(lot == null)
             {
+
                 throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
             }
 
@@ -84,8 +85,8 @@ namespace mes_server.Services
         }
 
         public async Task RegisterPerformanceAsync(Performance perf)
-        {            
-            
+        {
+
 
             var lot = await _lotRepository.GetByIdAsync(perf.LotID);
             if (lot == null) throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
@@ -101,7 +102,7 @@ namespace mes_server.Services
 
             if (perf.BadQty > 0 && lot != null)
             {
-                lot.Status = LotStatus.HOLD; 
+                lot.Status = LotStatus.HOLD;
             }
 
             var processList = await _processMasterRepository.GetAllAsync();
