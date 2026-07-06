@@ -1,6 +1,7 @@
 ﻿using mes_server.Data;
 using mes_server.Repositories.Interface.Generic;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace mes_server.Repositories.Generic
 {
@@ -18,14 +19,15 @@ namespace mes_server.Repositories.Generic
         }
 
 
-        public async Task AddAsync(T entity)
+        public async Task CreateAsync(T entity)
         {
             await _dbSet.AddAsync(entity);
         }
 
-        public void Delete(T entity)
+        public Task DeleteAsync(T entity)
         {
             _dbSet.Remove(entity);
+            return Task.CompletedTask;
         }
 
         public async Task<IEnumerable<T>> GetAllAsync()
@@ -43,9 +45,14 @@ namespace mes_server.Repositories.Generic
             await _context.SaveChangesAsync();
         }
 
-        public void Update(T entity)
+        public async Task UpdateAsync(T entity)
         {
            _dbSet.Update(entity);
         }
+        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _dbSet.Where(predicate).ToListAsync();
+        }
+
     }
 }

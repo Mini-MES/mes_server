@@ -30,6 +30,7 @@ namespace mes_server.Repositories.History
         {
             return await Context.Performances
                 .Where(p => p.PerfID == perfId)
+                .Include(p => p.WorkOrder)
                 .Include(p => p.Lot)
                 .Include(p => p.Tool)
                 .Include(p => p.User)
@@ -42,6 +43,20 @@ namespace mes_server.Repositories.History
             return await Context.Performances
                 .Where(p => p.LotID == lotId)
                 .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Performance>> GetPerformanceByWorkOrderAsync(int workOrderId)
+        {
+            return await Context.Performances
+                .Where(p => p.WorkOrderID == workOrderId)
+                .ToListAsync();
+        }
+
+        public async Task<int> GetTotalGoodQtyByOrderIdAsync(int orderId)
+        {
+            return await Context.Performances
+                .Where(p => p.WorkOrderID == orderId)
+                .SumAsync(p => p.GoodQty);
         }
     }
 }

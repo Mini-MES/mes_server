@@ -13,6 +13,11 @@ namespace mes_server.Models.History
         public int PerfID { get; set; }
 
         [Required]
+        public int WorkOrderID { get; set; }
+        [ForeignKey("WorkOrderID")]
+        public WorkOrder? WorkOrder { get; set; }
+
+        [Required]
         [MaxLength(20)]
         public string LotID { get; set; } = null!;
         [ForeignKey("LotID")]

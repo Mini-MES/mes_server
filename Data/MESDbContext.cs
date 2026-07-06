@@ -27,12 +27,13 @@ namespace mes_server.Data
         // History
         public DbSet<Performance> Performances { get; set; }
         public DbSet<ToolHistory> ToolHistories { get; set; }
+        public DbSet<Shipment> Shipments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // BOM 복합키 설정
             modelBuilder.Entity<BOM>()
-                .HasKey(b => new { b.ProductID, b.MaterialID });
+                .HasKey(b => new { b.ProductID, b.MaterialID, b.ProcessID });
 
             // BOM 관계 설정
             modelBuilder.Entity<BOM>()
@@ -46,6 +47,11 @@ namespace mes_server.Data
                 .WithMany()                   
                 .HasForeignKey(b => b.MaterialID) 
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<BOM>()
+                .HasOne<ProcessMaster>()
+                .WithMany()
+                .HasForeignKey(b => b.ProcessID);
 
             // Performance 관계 설정
             modelBuilder.Entity<Performance>()
@@ -76,7 +82,13 @@ namespace mes_server.Data
                 .HasOne(p => p.User)
                 .WithMany()
                 .HasForeignKey(p => p.UserID)
-                .OnDelete(DeleteBehavior.Restrict); 
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Performance>()
+                .HasOne(p => p.WorkOrder)
+                .WithMany()
+                .HasForeignKey(p => p.WorkOrderID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // ToolHistory 관계 설정
             modelBuilder.Entity<ToolHistory>()
@@ -103,6 +115,19 @@ namespace mes_server.Data
                 .HasOne(wo => wo.Product)
                 .WithMany()
                 .HasForeignKey(wo => wo.ProductID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Shipment 관계 설정
+            modelBuilder.Entity<Shipment>()
+                .HasOne(s => s.WorkOrder)
+                .WithMany()
+                .HasForeignKey(s => s.WorkOrderID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Shipment>()
+                .HasOne<ProductMaster>()
+                .WithMany()
+                .HasForeignKey(s => s.ProductID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);

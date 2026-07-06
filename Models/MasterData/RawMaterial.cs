@@ -14,5 +14,8 @@ namespace mes_server.Models.MasterData
 
         [Required]
         public int StockQty { get; set; }
+
+        [Required]
+        public int SafetyStock { get; set; }
     }
 }

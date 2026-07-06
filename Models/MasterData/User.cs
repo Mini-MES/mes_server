@@ -5,7 +5,7 @@ namespace mes_server.Models.MasterData
     public class User
     {
         [Key]
-        public int UserID { get; set; }
+        public string UserID { get; set; } = null!;
 
         [Required]
         [MaxLength(50)]
