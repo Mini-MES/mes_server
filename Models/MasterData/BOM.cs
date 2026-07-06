@@ -25,11 +25,7 @@ namespace mes_server.Models.MasterData
         [Required]
         public int ProcessID { get; set; }
 
-<<<<<<< HEAD
         [ForeignKey("ProcessID")]
         public ProcessMaster? Process { get; set; }
-
-=======
->>>>>>> 02a2052 (feat: inventoryService)
     }
 }
