@@ -66,7 +66,11 @@ namespace mes_server.Services
 
         public async Task CreateWorkOrderAsync(WorkOrder workOrder)
         {
+<<<<<<< HEAD
             bool isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(workOrder.ProductID, workOrder.TargetQty);
+=======
+            bool isAvailable = await _inventoryService.CheckMaterialAvailability(workOrder.ProductID, workOrder.TargetQty);
+>>>>>>> 27c420d (feat: organic connection)
             if (!isAvailable)
             {
                 throw new InvalidOperationException("재고가 부족합니다.");
