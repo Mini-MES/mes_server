@@ -1,8 +1,5 @@
 ﻿using mes_server.Data;
-<<<<<<< HEAD
 using mes_server.Models.History;
-=======
->>>>>>> 02a2052 (feat: inventoryService)
 using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
@@ -91,7 +88,6 @@ namespace mes_server.Services
         }
 
         public async Task ShipFinishedProductAsync(string productId, int workOrderId, int quantity, string destination)
-
         {
             var product = await _productRepository.GetByIdAsync(productId);
             if (product == null) throw new KeyNotFoundException("제품을 찾을 수 없습니다.");
