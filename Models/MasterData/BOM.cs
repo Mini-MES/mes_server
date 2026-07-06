@@ -22,5 +22,8 @@ namespace mes_server.Models.MasterData
         [Required]
         public int RequiredQty { get; set; }
 
+        [Required]
+        public int ProcessID { get; set; }
+
     }
 }
