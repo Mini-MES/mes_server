@@ -9,8 +9,12 @@ namespace mes_server.Repositories.Interface.History
                 
         Task<IEnumerable<Performance>> GetPerformancesByLotIdAsync(string lotId);
 
+        Task<IEnumerable<Performance>> GetPerformanceByWorkOrderAsync(int workOrderId);
+
         Task<IEnumerable<Performance>> GetPerformanceByProcessIdAsync(int processId);
 
         Task<IEnumerable<Performance>> GetPerformanceByDateAsync(DateTime startDate, DateTime endDate);
+
+        Task<int> GetTotalGoodQtyByOrderIdAsync(int orderId);
     }
 }

@@ -1,4 +1,5 @@
-﻿using mes_server.Models.MasterData;
+﻿using mes_server.Models.Enum;
+using mes_server.Models.MasterData;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -20,6 +21,9 @@ namespace mes_server.Models.Production
 
         [Required]
         public int TargetQty { get; set; }
+
+        [Required]
+        public OrderStatus Status { get; set; } = OrderStatus.Created;
 
         [Required]
         public DateTime OrderDate { get; set; } = DateTime.Now;

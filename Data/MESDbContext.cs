@@ -76,7 +76,13 @@ namespace mes_server.Data
                 .HasOne(p => p.User)
                 .WithMany()
                 .HasForeignKey(p => p.UserID)
-                .OnDelete(DeleteBehavior.Restrict); 
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Performance>()
+                .HasOne(p => p.WorkOrder)
+                .WithMany()
+                .HasForeignKey(p => p.WorkOrderID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // ToolHistory 관계 설정
             modelBuilder.Entity<ToolHistory>()
