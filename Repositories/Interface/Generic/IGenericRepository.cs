@@ -4,9 +4,9 @@
     {
         Task<T?> GetByIdAsync(params object[] keyValues);
         Task<IEnumerable<T>> GetAllAsync();
-        Task AddAsync(T entity);
-        void Update(T entity);
-        void Delete(T entity);
+        Task CreateAsync(T entity);
+        Task UpdateAsync(T entity);
+        Task DeleteAsync(T entity);
         Task SaveChangesAsync();
     }
 }
