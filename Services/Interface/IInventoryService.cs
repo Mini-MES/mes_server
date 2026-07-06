@@ -6,7 +6,7 @@
 
             Task ReceiveFinishedProductAsync(int workOrderId, int productionQty);
 
-            Task<bool> CheckMaterialAvailability(string productId, int targetQty);
+            Task<bool> CheckMaterialAvailabilityAsync(string productId, int targetQty);
 
             Task ShipFinishedProductAsync(string productId, int workOrderId, int quantity, string destination);
         }

@@ -25,5 +25,8 @@ namespace mes_server.Models.MasterData
         [Required]
         public int ProcessID { get; set; }
 
+        [ForeignKey("ProcessID")]
+        public ProcessMaster? Process { get; set; }
+
     }
 }

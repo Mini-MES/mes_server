@@ -24,9 +24,10 @@ namespace mes_server.Repositories.Generic
             await _dbSet.AddAsync(entity);
         }
 
-        public async Task DeleteAsync(T entity)
+        public Task DeleteAsync(T entity)
         {
             _dbSet.Remove(entity);
+            return Task.CompletedTask;
         }
 
         public async Task<IEnumerable<T>> GetAllAsync()

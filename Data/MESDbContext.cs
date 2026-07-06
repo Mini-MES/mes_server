@@ -33,7 +33,7 @@ namespace mes_server.Data
         {
             // BOM 복합키 설정
             modelBuilder.Entity<BOM>()
-                .HasKey(b => new { b.ProductID, b.MaterialID });
+                .HasKey(b => new { b.ProductID, b.MaterialID, b.ProcessID });
 
             // BOM 관계 설정
             modelBuilder.Entity<BOM>()
@@ -47,6 +47,11 @@ namespace mes_server.Data
                 .WithMany()                   
                 .HasForeignKey(b => b.MaterialID) 
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<BOM>()
+                .HasOne<ProcessMaster>()
+                .WithMany()
+                .HasForeignKey(b => b.ProcessID);
 
             // Performance 관계 설정
             modelBuilder.Entity<Performance>()

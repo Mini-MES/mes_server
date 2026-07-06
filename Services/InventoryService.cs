@@ -42,10 +42,16 @@ namespace mes_server.Services
             foreach (var bom in boms)
             {
                 var material = await _materialRepository.GetByIdAsync(bom.MaterialID);
-                if (material != null)
+                if (material == null)
                 {
-                    material.StockQty -= (bom.RequiredQty * productionQty);
+                    throw new KeyNotFoundException($"자재를 찾을 수 없습니다. (MaterialID: {bom.MaterialID})");
                 }
+                var requiredQty = bom.RequiredQty * productionQty;
+                if (material.StockQty < requiredQty)
+                {
+                    throw new InvalidOperationException($"재고 부족: 자재({bom.MaterialID}) 필요({requiredQty}) / 현재({material.StockQty})");
+                }
+                material.StockQty -= requiredQty;
             }
             await _context.SaveChangesAsync();
         }
@@ -69,7 +75,7 @@ namespace mes_server.Services
             return materials.Where(m => m.StockQty <= m.SafetyStock);
         }
 
-        public async Task<bool> CheckMaterialAvailability(string productId, int targetQty)
+        public async Task<bool> CheckMaterialAvailabilityAsync(string productId, int targetQty)
         {
             var boms = await _bomRepository.FindAsync(b => b.ProductID == productId);
             foreach (var bom in boms)

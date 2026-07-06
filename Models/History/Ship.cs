@@ -13,7 +13,7 @@ namespace mes_server.Models.History
         public string ProductID { get; set; } = null!;
 
         [ForeignKey("ProductID")]
-        public string ProductName { get; set; } = null!;
+        public string Product { get; set; } = null!;
         [Required]
         public int WorkOrderID { get; set; }
 

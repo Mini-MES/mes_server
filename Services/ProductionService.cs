@@ -40,7 +40,7 @@ namespace mes_server.Services
 
             if(lot == null)
             {
-                throw new NotImplementedException("존재하지 않는 Lot입니다.");
+                throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
             }
 
             if(!await IsOrderValid(lot.CurrentProcessID, nextProcessId))
@@ -65,7 +65,7 @@ namespace mes_server.Services
 
         public async Task CreateWorkOrderAsync(WorkOrder workOrder)
         {
-            bool isAvailable = await _inventoryService.CheckMaterialAvailability(workOrder.ProductID, workOrder.TargetQty);
+            bool isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(workOrder.ProductID, workOrder.TargetQty);
             if (!isAvailable)
             {
                 throw new InvalidOperationException("재고가 부족합니다.");
@@ -84,18 +84,20 @@ namespace mes_server.Services
         }
 
         public async Task RegisterPerformanceAsync(Performance perf)
-        {
+        {            
+            
+
+            var lot = await _lotRepository.GetByIdAsync(perf.LotID);
+            if (lot == null) throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
+
+            var workOrder = await _workOrderRepository.GetByIdAsync(perf.WorkOrderID);
+            if (workOrder == null) throw new KeyNotFoundException("존재하지 않는 생산지시입니다.");
+
             await _performanceRepository.CreateAsync(perf);
             await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.GoodQty);
 
-            var lot = await _lotRepository.GetByIdAsync(perf.LotID);
-            var workOrder = await _workOrderRepository.GetByIdAsync(perf.WorkOrderID);
-
-            if (workOrder != null)
-            {
-                workOrder.TotalBadQty += perf.BadQty;
-                workOrder.TotalGoodQty += perf.GoodQty;
-            }
+            workOrder.TotalBadQty += perf.BadQty;
+            workOrder.TotalGoodQty += perf.GoodQty;
 
             if (perf.BadQty > 0 && lot != null)
             {
