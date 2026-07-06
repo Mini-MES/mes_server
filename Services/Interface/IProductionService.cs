@@ -11,6 +11,6 @@ namespace mes_server.Services.Interface
         Task ChangeLotProcessAsync(string lotId, int nextProcessId);
         Task CompleteWorkOrderAsync(int orderId);
         Task<string> StartProductionAsync(int orderId, string lotId);
-        Task MoveProcessAsync(Performance perf, int nextProcessId)
+        Task MoveProcessAsync(Performance perf, int nextProcessId);
     }
 }

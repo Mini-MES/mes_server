@@ -45,7 +45,7 @@ namespace mes_server.Repositories.History
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Performance>> GetByWorkOrderAsync(int workOrderId)
+        public async Task<IEnumerable<Performance>> GetPerformanceByWorkOrderAsync(int workOrderId)
         {
             return await Context.Performances
                 .Where(p => p.WorkOrderID == workOrderId)

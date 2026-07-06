@@ -1,4 +1,5 @@
 ﻿using mes_server.Data;
+using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
@@ -12,6 +13,7 @@ namespace mes_server.Services
         private readonly IGenericRepository<ProductMaster> _productRepository;
         private readonly IGenericRepository<BOM> _bomRepository;
         private readonly IGenericRepository<WorkOrder> _workOrderRepository;
+        private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly MESDbContext _context;
 
         public InventoryService(
@@ -19,13 +21,15 @@ namespace mes_server.Services
             IGenericRepository<RawMaterial> materialRepository,
             IGenericRepository<ProductMaster> productRepository,
             IGenericRepository<BOM> bomRepository,
-            IGenericRepository<WorkOrder> workOrderRepository)
+            IGenericRepository<WorkOrder> workOrderRepository,
+            IGenericRepository<Shipment> shipmentRepository)
         {
             _context = context;
             _materialRepository = materialRepository;
             _productRepository = productRepository;
             _bomRepository = bomRepository;
             _workOrderRepository = workOrderRepository;
+            _shipmentRepository = shipmentRepository;
         }
 
         public async Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty)
@@ -77,7 +81,7 @@ namespace mes_server.Services
             return true;
         }
 
-        public async Task ShipFinishedProductAsync(string productId, int quantity)
+        public async Task ShipFinishedProductAsync(string productId, int workOrderId, int quantity, string destination)
         {
             var product = await _productRepository.GetByIdAsync(productId);
             if (product == null) throw new KeyNotFoundException("제품을 찾을 수 없습니다.");
@@ -89,7 +93,16 @@ namespace mes_server.Services
 
             product.StockQty -= quantity;
 
-            //TODO : 출하 기록 저장 
+            var shipment = new Shipment
+            {
+                ProductID = productId,
+                WorkOrderID = workOrderId,
+                Quantity = quantity,
+                Destination = destination,
+                ShipmentDate = DateTime.Now
+            };
+
+            await _shipmentRepository.CreateAsync(shipment);
 
             await _context.SaveChangesAsync();
         }

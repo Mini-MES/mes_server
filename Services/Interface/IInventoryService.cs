@@ -12,7 +12,7 @@ namespace mes_server.Services.Interface
 
             Task<bool> CheckMaterialAvailability(string productId, int targetQty);
 
-            Task ShipFinishedProductAsync(string productId, int quantity);
+            Task ShipFinishedProductAsync(string productId, int workOrderId, int quantity, string destination);
         }
     }
 }

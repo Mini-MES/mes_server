@@ -27,6 +27,7 @@ namespace mes_server.Data
         // History
         public DbSet<Performance> Performances { get; set; }
         public DbSet<ToolHistory> ToolHistories { get; set; }
+        public DbSet<Shipment> Shipments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -109,6 +110,19 @@ namespace mes_server.Data
                 .HasOne(wo => wo.Product)
                 .WithMany()
                 .HasForeignKey(wo => wo.ProductID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Shipment 관계 설정
+            modelBuilder.Entity<Shipment>()
+                .HasOne(s => s.WorkOrder)
+                .WithMany()
+                .HasForeignKey(s => s.WorkOrderID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Shipment>()
+                .HasOne<ProductMaster>()
+                .WithMany()
+                .HasForeignKey(s => s.ProductID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);
