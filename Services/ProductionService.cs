@@ -40,10 +40,7 @@ namespace mes_server.Services
 
             if(lot == null)
             {
-<<<<<<< HEAD
 
-=======
->>>>>>> 35eed08 (fix: apply review)
                 throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
             }
 
@@ -69,15 +66,7 @@ namespace mes_server.Services
 
         public async Task CreateWorkOrderAsync(WorkOrder workOrder)
         {
-<<<<<<< HEAD
-<<<<<<< HEAD
             bool isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(workOrder.ProductID, workOrder.TargetQty);
-=======
-            bool isAvailable = await _inventoryService.CheckMaterialAvailability(workOrder.ProductID, workOrder.TargetQty);
->>>>>>> 27c420d (feat: organic connection)
-=======
-            bool isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(workOrder.ProductID, workOrder.TargetQty);
->>>>>>> 35eed08 (fix: apply review)
             if (!isAvailable)
             {
                 throw new InvalidOperationException("재고가 부족합니다.");
@@ -96,13 +85,8 @@ namespace mes_server.Services
         }
 
         public async Task RegisterPerformanceAsync(Performance perf)
-<<<<<<< HEAD
         {
 
-=======
-        {            
-            
->>>>>>> 35eed08 (fix: apply review)
 
             var lot = await _lotRepository.GetByIdAsync(perf.LotID);
             if (lot == null) throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
