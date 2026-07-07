@@ -47,7 +47,6 @@ namespace mes_server.Services
             {
                 throw new InvalidOperationException("잘못된 공정 순서입니다.");
             }
-            ;
 
             lot.CurrentProcessID = nextProcessId;
             await _context.SaveChangesAsync();
@@ -155,7 +154,7 @@ namespace mes_server.Services
         }
         public async Task MoveProcessAsync(Performance perf, int nextProcessId)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
@@ -171,4 +170,5 @@ namespace mes_server.Services
             }
 
         }
+    }
 }
