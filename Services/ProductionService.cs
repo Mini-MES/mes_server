@@ -19,10 +19,10 @@ namespace mes_server.Services
         private readonly IInventoryService _inventoryService;
         private readonly MESDbContext _context;
 
-        public ProductionService(MESDbContext context, 
+        public ProductionService(MESDbContext context,
             IPerformanceRepository performanceRepository,
-            IWorkOrderRepository workOrderRepository, 
-            ILotRepository lotRepository, 
+            IWorkOrderRepository workOrderRepository,
+            ILotRepository lotRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,
             IInventoryService inventoryService)
         {
@@ -38,15 +38,15 @@ namespace mes_server.Services
         {
             var lot = await _lotRepository.GetByIdAsync(lotId);
 
-            if(lot == null)
+            if (lot == null)
             {
                 throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
             }
 
-            if(!await IsOrderValid(lot.CurrentProcessID, nextProcessId))
+            if (!await IsOrderValid(lot.CurrentProcessID, nextProcessId))
             {
                 throw new InvalidOperationException("잘못된 공정 순서입니다.");
-            };
+            }
 
             lot.CurrentProcessID = nextProcessId;
             await _context.SaveChangesAsync();
@@ -55,10 +55,12 @@ namespace mes_server.Services
         public async Task CompleteWorkOrderAsync(int orderId)
         {
             var order = await _workOrderRepository.GetByIdAsync(orderId);
-            if(order != null)
+            if (order != null)
             {
                 order.Status = OrderStatus.Completed;
-            } else {
+            }
+            else
+            {
                 throw new KeyNotFoundException("존재하지 않는 생산지시입니다.");
             }
         }
@@ -84,8 +86,8 @@ namespace mes_server.Services
         }
 
         public async Task RegisterPerformanceAsync(Performance perf)
-        {            
-            
+        {
+
 
             var lot = await _lotRepository.GetByIdAsync(perf.LotID);
             if (lot == null) throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
@@ -101,7 +103,7 @@ namespace mes_server.Services
 
             if (perf.BadQty > 0 && lot != null)
             {
-                lot.Status = LotStatus.HOLD; 
+                lot.Status = LotStatus.HOLD;
             }
 
             var processList = await _processMasterRepository.GetAllAsync();
@@ -152,10 +154,21 @@ namespace mes_server.Services
         }
         public async Task MoveProcessAsync(Performance perf, int nextProcessId)
         {
-            await RegisterPerformanceAsync(perf);
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            await ChangeLotProcessAsync(perf.LotID, nextProcessId);
+            try
+            {
+                await RegisterPerformanceAsync(perf);
+                await ChangeLotProcessAsync(perf.LotID, nextProcessId);
+                await transaction.CommitAsync();
+
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+
         }
-
     }
 }

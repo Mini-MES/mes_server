@@ -1,4 +1,4 @@
-﻿namespace mes_server.Services.Interface
+namespace mes_server.Services.Interface
 {
         public interface IInventoryService
         {
