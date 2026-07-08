@@ -1,4 +1,5 @@
-﻿using mes_server.Models.MasterData;
+﻿using mes_server.Models.Enum;
+using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Services.Interface;
 
@@ -24,6 +25,11 @@ namespace mes_server.Services
         public async Task<IEnumerable<BadReasonMaster>> GetBadReasonListAsync()
         {
             return await _badReasonMasterRepository.GetAllAsync();
+        }
+
+        public async Task<IEnumerable<BadReasonMaster>> GetBadReasonByCodeAsync(ReasonCode code)
+        {
+            return await _badReasonMasterRepository.FindAsync(b => b.ReasonCode == code);
         }
 
         public async Task<ProcessMaster?> GetProcessBySequenceAsync(int sequence)
