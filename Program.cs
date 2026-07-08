@@ -42,9 +42,18 @@ namespace mes_server
             builder.Services.AddScoped<IProductionService, ProductionService>();
             builder.Services.AddScoped<IUserService, UserService>();
 
+            builder.Services.AddControllers();
+            builder.Services.AddSwaggerGen();
+
             var app = builder.Build();
 
-            app.MapGet("/", () => "Hello World!");
+            if(app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.MapControllers();
 
             app.Run();
         }

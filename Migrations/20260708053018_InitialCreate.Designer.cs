@@ -12,8 +12,8 @@ using mes_server.Data;
 namespace mes_server.Migrations
 {
     [DbContext(typeof(MESDbContext))]
-    [Migration("20260706133503_AddShipmentModel")]
-    partial class AddShipmentModel
+    [Migration("20260708053018_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -58,8 +58,9 @@ namespace mes_server.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("UserID")
-                        .HasColumnType("int");
+                    b.Property<string>("UserID")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("WorkDate")
                         .HasColumnType("datetime2");
@@ -96,13 +97,13 @@ namespace mes_server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Product")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ProductID")
                         .IsRequired()
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ProductName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -168,9 +169,11 @@ namespace mes_server.Migrations
                     b.Property<int>("RequiredQty")
                         .HasColumnType("int");
 
-                    b.HasKey("ProductID", "MaterialID");
+                    b.HasKey("ProductID", "MaterialID", "ProcessID");
 
                     b.HasIndex("MaterialID");
+
+                    b.HasIndex("ProcessID");
 
                     b.ToTable("BOMs");
                 });
@@ -257,11 +260,8 @@ namespace mes_server.Migrations
 
             modelBuilder.Entity("mes_server.Models.MasterData.User", b =>
                 {
-                    b.Property<int>("UserID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserID"));
+                    b.Property<string>("UserID")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -294,6 +294,9 @@ namespace mes_server.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalBadQty")
                         .HasColumnType("int");
 
                     b.HasKey("LotID");
@@ -352,6 +355,12 @@ namespace mes_server.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("TargetQty")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalBadQty")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalGoodQty")
                         .HasColumnType("int");
 
                     b.HasKey("OrderID");
@@ -448,6 +457,12 @@ namespace mes_server.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("mes_server.Models.MasterData.ProcessMaster", "Process")
+                        .WithMany()
+                        .HasForeignKey("ProcessID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("mes_server.Models.MasterData.ProductMaster", "Product")
                         .WithMany("BOMs")
                         .HasForeignKey("ProductID")
@@ -455,6 +470,8 @@ namespace mes_server.Migrations
                         .IsRequired();
 
                     b.Navigation("Material");
+
+                    b.Navigation("Process");
 
                     b.Navigation("Product");
                 });

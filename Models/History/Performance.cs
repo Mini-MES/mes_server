@@ -40,7 +40,7 @@ namespace mes_server.Models.History
         public BadReasonMaster? BadReason { get; set; }
 
         [Required]
-        public int UserID { get; set; }
+        public string UserID { get; set; } = null!;
         [ForeignKey("UserID")]
         public User? User { get; set; }
 
