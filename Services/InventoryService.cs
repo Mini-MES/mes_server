@@ -32,6 +32,18 @@ namespace mes_server.Services
             _shipmentRepository = shipmentRepository;
         }
 
+        public async Task UpdateStockAsync(RawMaterial material)
+        {
+            var existingMaterial = await _materialRepository.GetByIdAsync(material.MaterialID);
+            if (existingMaterial == null) throw new KeyNotFoundException("자재를 찾을 수 없습니다.");
+
+            existingMaterial.StockQty = material.StockQty;
+            existingMaterial.MaterialName = material.MaterialName; 
+            existingMaterial.SafetyStock = material.SafetyStock; 
+
+            await _context.SaveChangesAsync();
+        }
+
         public async Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty)
         {
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
@@ -111,6 +123,20 @@ namespace mes_server.Services
             await _shipmentRepository.CreateAsync(shipment);
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<RawMaterial>> SearchMaterialsAsync(string keyword)
+        {
+            var materials = await _materialRepository.GetAllAsync();
+
+            var query = materials.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                query = query.Where(m => m.MaterialName != null && m.MaterialName.Contains(keyword));
+            }
+
+            return query.ToList();
         }
     }
 }
