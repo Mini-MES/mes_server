@@ -58,6 +58,7 @@ namespace mes_server.Services
             if (order != null)
             {
                 order.Status = OrderStatus.Completed;
+                await _context.SaveChangesAsync();
             }
             else
             {
