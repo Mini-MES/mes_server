@@ -54,7 +54,7 @@ namespace mes_server.Controllers
         [HttpPost("update-stock")]
         public async Task<IActionResult> UpdateStock([FromBody] RawMaterial material)
         {
-            await _inventoryService.UpdateStockAsync(material.MaterialID, material.StockQty);
+            await _inventoryService.UpdateStockAsync(material);
             return Ok(new { Message = "재고가 업데이트되었습니다." });
         }
 
