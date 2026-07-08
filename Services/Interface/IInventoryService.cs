@@ -4,7 +4,7 @@ namespace mes_server.Services.Interface
 {
         public interface IInventoryService
         {
-            Task UpdateStockAsync(string materialId, int changeQty);
+            Task UpdateStockAsync(RawMaterial material);
             Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty);
 
             Task ReceiveFinishedProductAsync(int workOrderId, int productionQty);
