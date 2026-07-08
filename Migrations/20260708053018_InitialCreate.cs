@@ -57,7 +57,8 @@ namespace mes_server.Migrations
                 {
                     MaterialID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     MaterialName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    StockQty = table.Column<int>(type: "int", nullable: false)
+                    StockQty = table.Column<int>(type: "int", nullable: false),
+                    SafetyStock = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -82,8 +83,7 @@ namespace mes_server.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    UserID = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserID = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     UserRole = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false)
@@ -101,6 +101,9 @@ namespace mes_server.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ProductID = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     TargetQty = table.Column<int>(type: "int", nullable: false),
+                    TotalGoodQty = table.Column<int>(type: "int", nullable: false),
+                    TotalBadQty = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
                     OrderDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     DueDate = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -122,11 +125,18 @@ namespace mes_server.Migrations
                 {
                     ProductID = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     MaterialID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    ProcessID = table.Column<int>(type: "int", nullable: false),
                     RequiredQty = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BOMs", x => new { x.ProductID, x.MaterialID });
+                    table.PrimaryKey("PK_BOMs", x => new { x.ProductID, x.MaterialID, x.ProcessID });
+                    table.ForeignKey(
+                        name: "FK_BOMs_ProcessMasters_ProcessID",
+                        column: x => x.ProcessID,
+                        principalTable: "ProcessMasters",
+                        principalColumn: "ProcessID",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_BOMs_ProductMasters_ProductID",
                         column: x => x.ProductID,
@@ -170,6 +180,7 @@ namespace mes_server.Migrations
                     LotID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     OrderID = table.Column<int>(type: "int", nullable: false),
                     CurrentProcessID = table.Column<int>(type: "int", nullable: false),
+                    TotalBadQty = table.Column<int>(type: "int", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -190,16 +201,47 @@ namespace mes_server.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Shipments",
+                columns: table => new
+                {
+                    ShipmentID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProductID = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    Product = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    WorkOrderID = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    Destination = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ShipmentDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Shipments", x => x.ShipmentID);
+                    table.ForeignKey(
+                        name: "FK_Shipments_ProductMasters_ProductID",
+                        column: x => x.ProductID,
+                        principalTable: "ProductMasters",
+                        principalColumn: "ProductID",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Shipments_WorkOrders_WorkOrderID",
+                        column: x => x.WorkOrderID,
+                        principalTable: "WorkOrders",
+                        principalColumn: "OrderID",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Performances",
                 columns: table => new
                 {
                     PerfID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    WorkOrderID = table.Column<int>(type: "int", nullable: false),
                     LotID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     ProcessID = table.Column<int>(type: "int", nullable: false),
                     ToolID = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     ReasonCode = table.Column<int>(type: "int", nullable: false),
-                    UserID = table.Column<int>(type: "int", nullable: false),
+                    UserID = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     InputQty = table.Column<int>(type: "int", nullable: false),
                     GoodQty = table.Column<int>(type: "int", nullable: false),
                     BadQty = table.Column<int>(type: "int", nullable: false),
@@ -238,12 +280,23 @@ namespace mes_server.Migrations
                         principalTable: "Users",
                         principalColumn: "UserID",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Performances_WorkOrders_WorkOrderID",
+                        column: x => x.WorkOrderID,
+                        principalTable: "WorkOrders",
+                        principalColumn: "OrderID",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_BOMs_MaterialID",
                 table: "BOMs",
                 column: "MaterialID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BOMs_ProcessID",
+                table: "BOMs",
+                column: "ProcessID");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Lots_CurrentProcessID",
@@ -281,6 +334,21 @@ namespace mes_server.Migrations
                 column: "UserID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Performances_WorkOrderID",
+                table: "Performances",
+                column: "WorkOrderID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Shipments_ProductID",
+                table: "Shipments",
+                column: "ProductID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Shipments_WorkOrderID",
+                table: "Shipments",
+                column: "WorkOrderID");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ToolHistories_ToolID",
                 table: "ToolHistories",
                 column: "ToolID");
@@ -299,6 +367,9 @@ namespace mes_server.Migrations
 
             migrationBuilder.DropTable(
                 name: "Performances");
+
+            migrationBuilder.DropTable(
+                name: "Shipments");
 
             migrationBuilder.DropTable(
                 name: "ToolHistories");

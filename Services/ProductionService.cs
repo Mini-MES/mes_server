@@ -65,7 +65,7 @@ namespace mes_server.Services
             }
         }
 
-        public async Task CreateWorkOrderAsync(WorkOrder workOrder)
+        public async Task<WorkOrder> CreateWorkOrderAsync(WorkOrder workOrder)
         {
             bool isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(workOrder.ProductID, workOrder.TargetQty);
             if (!isAvailable)
@@ -77,6 +77,8 @@ namespace mes_server.Services
 
             await _workOrderRepository.CreateAsync(workOrder);
             await _context.SaveChangesAsync();
+
+            return workOrder;
         }
 
         public async Task<IEnumerable<Performance>> GetProductionStatusAsync(int orderId)
@@ -169,6 +171,52 @@ namespace mes_server.Services
                 throw;
             }
 
+        }
+
+        public async Task UpdateWorkOrderAsync(int orderId, WorkOrder workOrder)
+        {
+            var existingOrder = await _workOrderRepository.GetByIdAsync(orderId);
+            if (existingOrder == null)
+            {
+                throw new KeyNotFoundException("존재하지 않는 생산지시입니다.");
+            }
+            if (existingOrder.Status == OrderStatus.InProgress || existingOrder.Status == OrderStatus.Completed)
+            {
+                throw new InvalidOperationException("이미 진행 중이거나 완료된 생산 지시는 수정할 수 없습니다.");
+            }
+
+            _context.Entry(existingOrder).CurrentValues.SetValues(workOrder);
+            existingOrder.OrderID = orderId;
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeleteWorkOrderAsync(int orderId)
+        {
+            var existingOrder = await _workOrderRepository.GetByIdAsync(orderId);
+            if (existingOrder == null)
+            {
+                throw new KeyNotFoundException("존재하지 않는 생산지시입니다.");
+            }
+
+            if (existingOrder.Status == OrderStatus.InProgress || existingOrder.Status == OrderStatus.Completed)
+            {
+                throw new InvalidOperationException("이미 진행 중이거나 완료된 생산 지시는 삭제할 수 없습니다.");
+            }
+
+            await _workOrderRepository.DeleteAsync(existingOrder);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<Lot> GetLotStatusAsync(string lotId)
+        {
+            var lot = await _lotRepository.GetByIdAsync(lotId);
+
+            if (lot == null)
+            {
+                throw new KeyNotFoundException($"LOT ID: {lotId}를 찾을 수 없습니다.");
+            }
+
+            return lot;
         }
     }
 }

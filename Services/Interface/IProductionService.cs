@@ -6,11 +6,14 @@ namespace mes_server.Services.Interface
     public interface IProductionService
     {
         Task RegisterPerformanceAsync(Performance perf);
-        Task CreateWorkOrderAsync(WorkOrder workOrder);
+        Task<WorkOrder> CreateWorkOrderAsync(WorkOrder workOrder);
         Task<IEnumerable<Performance>> GetProductionStatusAsync(int orderId);
         Task ChangeLotProcessAsync(string lotId, int nextProcessId);
         Task CompleteWorkOrderAsync(int orderId);
         Task<string> StartProductionAsync(int orderId, string lotId);
         Task MoveProcessAsync(Performance perf, int nextProcessId);
+        Task UpdateWorkOrderAsync(int orderId, WorkOrder workOrder);
+        Task DeleteWorkOrderAsync(int orderId);
+        Task<Lot> GetLotStatusAsync(string lotId);
     }
 }

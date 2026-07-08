@@ -49,7 +49,7 @@ namespace mes_server.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<BOM>()
-                .HasOne<ProcessMaster>()
+                .HasOne(b => b.Process)
                 .WithMany()
                 .HasForeignKey(b => b.ProcessID);
 
