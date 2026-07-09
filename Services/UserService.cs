@@ -1,8 +1,10 @@
 ﻿using mes_server.Data;
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
+using mes_server.Models.Settings;
 using mes_server.Repositories.Interface.MasterData;
 using mes_server.Services.Interface;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -14,21 +16,20 @@ namespace mes_server.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IConfiguration _configuration;
+        private readonly JwtSettings _jwtSettings;
         private readonly MESDbContext _context;
 
-        public UserService(IUserRepository userRepository, IConfiguration configuration, MESDbContext context)
+        public UserService(IUserRepository userRepository, IOptions<JwtSettings> jwtOptions, MESDbContext context)
         {
             _userRepository = userRepository;
-            _configuration = configuration;
+            _jwtSettings = jwtOptions.Value;
             _context = context;
         }
 
         public string GenerateJwtToken(User user)
         {
-            var jwtSettings = _configuration.GetSection("Jwt");
-            var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
-            var expireMinutes = int.Parse(jwtSettings["ExpireMinutes"]);
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.Key);
+          
 
             var claims = new[]
             {
@@ -40,9 +41,9 @@ namespace mes_server.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
-                Issuer = jwtSettings["Issuer"],
-                Audience = jwtSettings["Audience"],
+                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpireMinutes),
+                Issuer = _jwtSettings.Issuer,
+                Audience = _jwtSettings.Audience,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 

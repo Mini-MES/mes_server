@@ -2,10 +2,12 @@
 using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mes_server.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class InventoryController : ControllerBase

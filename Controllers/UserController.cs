@@ -1,6 +1,4 @@
-﻿using Azure;
-using Azure.Core;
-using mes_server.Models.DTOs.MasterData;
+﻿using mes_server.Models.DTOs.MasterData;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,11 +35,13 @@ namespace mes_server.Controllers
         public async Task<IActionResult> Refresh()
         {
             var refreshToken = Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(refreshToken)) return BadRequest("Token missing");
             var newTokens = await _userService.RefreshTokenAsync(refreshToken);
             Response.Cookies.Append("refreshToken", newTokens.refreshToken, new CookieOptions { HttpOnly = true, Secure = true });
             return Ok(new { Token = newTokens.token });
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost("users/{id}/role")]
         [Authorize(Roles = "Admin")] // 관리자만 권한 수정 가능
         public async Task<IActionResult> UpdateRole([FromRoute] string id, [FromBody] string newRole)

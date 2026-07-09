@@ -1,11 +1,12 @@
 ﻿using mes_server.Models.DTOs.Tool;
-using mes_server.Models.Enum;
 using mes_server.Models.Production;
 using mes_server.Services.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mes_server.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ToolController : ControllerBase
