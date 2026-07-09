@@ -36,7 +36,7 @@ namespace mes_server.Controllers
         public async Task<IActionResult> CreateMaterial([FromBody] RawMaterial material)
         {
             var result = await _materialService.CreateAsync(material);
-            return Ok(new { Message = "자재가 등록되었습니다.", Data = result });
+            return Ok(new { Message = "자재가 등록되었습니다.", data = result });
         }
 
         [HttpDelete("materials/{materialId}")]
@@ -76,14 +76,14 @@ namespace mes_server.Controllers
         public async Task<IActionResult> GetLowStockItems()
         {
             var result = await _inventoryService.GetLowStockMaterialsAsync();
-            return Ok(new { Message = "안전 재고 이하 품목 조회 완료", Data = result });
+            return Ok(new { Message = "안전 재고 이하 품목 조회 완료", data = result });
         }
 
         [HttpGet("check-availability")]
         public async Task<IActionResult> CheckAvailability([FromQuery] string productId, [FromQuery] int targetQty)
         {
             var isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(productId, targetQty);
-            return Ok(new { Message = "가용 재고 검증 결과", Data = isAvailable });
+            return Ok(new { Message = "가용 재고 검증 결과", data = isAvailable });
         }
 
         [HttpPost("ship")]

@@ -1,4 +1,5 @@
-﻿using mes_server.Models.Production;
+﻿using mes_server.Models.Enum;
+using mes_server.Models.Production;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -24,6 +25,6 @@ namespace mes_server.Models.History
         public int BeforeCount { get; set; }
 
         [MaxLength(20)]
-        public string? Reson { get; set; }
+        public ReasonCode Reason { get; set; }
     }
 }
