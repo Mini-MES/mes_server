@@ -36,14 +36,7 @@ namespace mes_server.Controllers
         [HttpPost("materials")]
         public async Task<IActionResult> CreateMaterial([FromBody] MaterialCreateDto createDto)
         {
-            var material = new RawMaterial
-            {
-                MaterialID = createDto.MaterialID,
-                MaterialName = createDto.MaterialName,
-                SafetyStock = createDto.SafetyStock
-            };
-
-            var result = await _materialService.CreateAsync(material);
+            var result = await _inventoryService.CreateMaterialAsync(createDto);
             return Ok(new { Message = "자재가 등록되었습니다.", data = result });
         }
 
@@ -59,10 +52,10 @@ namespace mes_server.Controllers
 
         // --- 2. 비즈니스 로직 (InventoryService 활용) ---
 
-        [HttpPost("update-stock")]
-        public async Task<IActionResult> UpdateStock([FromBody] RawMaterial material)
+        [HttpPost("update-stock/{materialId}")]
+        public async Task<IActionResult> UpdateStock([FromRoute] string materialId, [FromBody] StockUpdateDto dto)
         {
-            await _inventoryService.UpdateStockAsync(material);
+            await _inventoryService.UpdateStockAsync(materialId, dto);
             return Ok(new { Message = "재고가 업데이트되었습니다." });
         }
 
@@ -95,13 +88,10 @@ namespace mes_server.Controllers
         }
 
         [HttpPost("ship")]
-        public async Task<IActionResult> ShipProduct([FromBody] Shipment shipment)
+        public async Task<IActionResult> ShipProduct([FromBody] ShipCreateDto dto)
         {
             await _inventoryService.ShipFinishedProductAsync(
-                shipment.ProductID,
-                shipment.WorkOrderID,
-                shipment.Quantity,
-                shipment.Destination
+                dto.ProductID, dto.WorkOrderID, dto.Quantity, dto.Destination
             );
             return Ok(new { Message = "완제품 출하가 완료되었습니다." });
         }
