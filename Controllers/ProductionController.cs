@@ -1,4 +1,5 @@
-﻿using mes_server.Models.History;
+﻿using mes_server.Models.DTOs.Production;
+using mes_server.Models.History;
 using mes_server.Models.Production;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Mvc;
@@ -18,17 +19,25 @@ namespace mes_server.Controllers
 
         // 생산 지시 생성
         [HttpPost("order")]
-        public async Task<IActionResult> CreateWorkOrder([FromBody] WorkOrder workOrder)
+        public async Task<IActionResult> CreateWorkOrder([FromBody] WorkOrderCreateDto createDto)
         {
+            var workOrder = new WorkOrder
+            {
+                ProductID = createDto.ProductID,
+                TargetQty = createDto.TargetQty,
+                StartDate = createDto.StartDate,
+                DueDate = createDto.DueDate
+            };
+
             var result = await _productionService.CreateWorkOrderAsync(workOrder);
             return Ok(new { Message = "생산 지시가 성공적으로 생성되었습니다.", data = result });
         }
 
         // 생산 시작
         [HttpPost("start/{orderId}")]
-        public async Task<IActionResult> StartProduction([FromRoute] int orderId, [FromBody] string lotId)
+        public async Task<IActionResult> StartProduction([FromRoute] int orderId, [FromBody] StartProductionDto startDto)
         {
-            var result = await _productionService.StartProductionAsync(orderId, lotId);
+            var result = await _productionService.StartProductionAsync(orderId, startDto.lotId);
             return Ok(new { Message = "생산이 성공적으로 시작되었습니다.", data = result });
         }
 
@@ -74,10 +83,23 @@ namespace mes_server.Controllers
 
         // 단순 실적 등록
         [HttpPost("performance/register")]
-        public async Task<IActionResult> RegisterPerformance([FromBody] Performance perf)
+        public async Task<IActionResult> RegisterPerformance([FromBody] PerformanceRegisterDto registerDto)
         {
-            await _productionService.RegisterPerformanceAsync(perf);
-            return Ok(new { Message = "실적이 성공적으로 등록되었습니다." });
+            var result = new Performance
+            {
+                WorkOrderID = registerDto.WorkOrderID,
+                LotID = registerDto.LotID,
+                ProcessID = registerDto.ProcessID,
+                ToolID = registerDto.ToolID,
+                ReasonCode = registerDto.ReasonCode,
+                UserID = registerDto.UserID,
+                InputQty = registerDto.InputQty,
+                GoodQty = registerDto.GoodQty,
+                BadQty = registerDto.BadQty,
+                WorkDate = DateTime.Now
+            };
+            await _productionService.RegisterPerformanceAsync(result);
+            return Ok(new { Message = "실적이 성공적으로 등록되었습니다.", data = result });
         }
 
         // Lot로 현재 상황 조회
