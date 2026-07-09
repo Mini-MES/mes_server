@@ -51,9 +51,9 @@ namespace mes_server.Controllers
 
         // 생산 수정
         [HttpPut("order/{orderId}")]
-        public async Task<IActionResult> UpdateWorkOrder(int orderId, [FromBody] WorkOrder workOrder)
+        public async Task<IActionResult> UpdateWorkOrder(int orderId, [FromBody] WorkOrderUpdateDto updateDto)
         {
-            await _productionService.UpdateWorkOrderAsync(orderId, workOrder);
+            await _productionService.UpdateWorkOrderAsync(orderId, updateDto);
             return Ok(new { Message = "생산 지시가 성공적으로 수정되었습니다." });
         }
 
@@ -67,9 +67,9 @@ namespace mes_server.Controllers
 
         // 공정 이동
         [HttpPost("performance/move")]
-        public async Task<IActionResult> MoveProcess([FromBody] Performance perf, [FromQuery] int nextProcessId)
+        public async Task<IActionResult> MoveProcess([FromBody] PerformanceRegisterDto perfDto, [FromQuery] int nextProcessId)
         {
-            await _productionService.MoveProcessAsync(perf, nextProcessId);
+            await _productionService.MoveProcessAsync(perfDto, nextProcessId);
             return Ok(new { Message = "공정 이동이 성공적으로 완료되었습니다." });
         }
 

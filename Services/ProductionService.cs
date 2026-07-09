@@ -178,14 +178,14 @@ namespace mes_server.Services
 
             return lotId;
         }
-        public async Task MoveProcessAsync(Performance perf, int nextProcessId)
+        public async Task MoveProcessAsync(PerformanceRegisterDto perfDto, int nextProcessId)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                await RegisterPerformanceAsync(perf);
-                await ChangeLotProcessAsync(perf.LotID, nextProcessId);
+                await RegisterPerformanceAsync(perfDto);
+                await ChangeLotProcessAsync(perfDto.LotID, nextProcessId);
                 await transaction.CommitAsync();
 
             }
@@ -197,7 +197,7 @@ namespace mes_server.Services
 
         }
 
-        public async Task UpdateWorkOrderAsync(int orderId, WorkOrder workOrder)
+        public async Task UpdateWorkOrderAsync(int orderId, WorkOrderUpdateDto updateDto)
         {
             var existingOrder = await _workOrderRepository.GetByIdAsync(orderId);
             if (existingOrder == null)
@@ -208,9 +208,10 @@ namespace mes_server.Services
             {
                 throw new InvalidOperationException("이미 진행 중이거나 완료된 생산 지시는 수정할 수 없습니다.");
             }
-
-            _context.Entry(existingOrder).CurrentValues.SetValues(workOrder);
-            existingOrder.OrderID = orderId;
+            existingOrder.TargetQty = updateDto.TargetQty;
+            existingOrder.StartDate = updateDto.StartDate;
+            existingOrder.DueDate = updateDto.DueDate;
+            existingOrder.Status = updateDto.Status;
 
             await _context.SaveChangesAsync();
         }
