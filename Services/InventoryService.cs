@@ -1,4 +1,5 @@
 ﻿using mes_server.Data;
+using mes_server.Models.DTOs.Inventory;
 using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Models.Production;
@@ -32,14 +33,14 @@ namespace mes_server.Services
             _shipmentRepository = shipmentRepository;
         }
 
-        public async Task UpdateStockAsync(RawMaterial material)
+        public async Task UpdateStockAsync(string materialId, StockUpdateDto dto)
         {
-            var existingMaterial = await _materialRepository.GetByIdAsync(material.MaterialID);
+            var existingMaterial = await _materialRepository.GetByIdAsync(materialId);
             if (existingMaterial == null) throw new KeyNotFoundException("자재를 찾을 수 없습니다.");
 
-            existingMaterial.StockQty = material.StockQty;
-            existingMaterial.MaterialName = material.MaterialName; 
-            existingMaterial.SafetyStock = material.SafetyStock; 
+            existingMaterial.StockQty = dto.StockQty;
+            existingMaterial.MaterialName = dto.MaterialName;
+            existingMaterial.SafetyStock = dto.SafetyStock;
 
             await _context.SaveChangesAsync();
         }
@@ -66,6 +67,22 @@ namespace mes_server.Services
                 material.StockQty -= requiredQty;
             }
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<RawMaterial> CreateMaterialAsync(MaterialCreateDto dto)
+        {
+            var existingMaterial = await _materialRepository.GetByIdAsync(dto.MaterialID);
+            if (existingMaterial != null) throw new InvalidOperationException("이미 존재하는 자재입니다.");
+            var newMaterial = new RawMaterial
+            {
+                MaterialID = dto.MaterialID,
+                MaterialName = dto.MaterialName,
+                SafetyStock = dto.SafetyStock,
+                StockQty = 0
+            };
+            await _materialRepository.CreateAsync(newMaterial);
+            await _context.SaveChangesAsync();
+            return newMaterial;
         }
 
         public async Task ReceiveFinishedProductAsync(int workOrderId, int productionQty)

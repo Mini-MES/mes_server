@@ -1,4 +1,5 @@
-﻿using mes_server.Models.Enum;
+﻿using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Services.Interface;
@@ -53,6 +54,61 @@ namespace mes_server.Services
         {
             var boms = await GetProductBOMAsync(productId);
             return boms != null && boms.Any();
+        }
+
+        public async Task<ProcessMaster> CreateProcessAsync(ProcessCreateDto dto)
+        {
+            var process = new ProcessMaster
+            {
+                ProcessName = dto.ProcessName,
+                SequenceOrder = dto.SequenceOrder
+            };
+            await _processMasterRepository.CreateAsync(process);
+            await _processMasterRepository.SaveChangesAsync();
+
+            return process;
+        }
+
+        public async Task<BadReasonMaster> CreateBadReasonAsync(BadReasonCreateDto dto)
+        {
+            var reason = new BadReasonMaster
+            {
+                ReasonCode = dto.ReasonCode,
+                ReasonDescription = dto.Description
+            };
+            await _badReasonMasterRepository.CreateAsync(reason);
+            await _badReasonMasterRepository.SaveChangesAsync();
+
+            return reason;
+        }
+
+        public async Task<BOM> AddBomAsync(BOMCreateDto dto)
+        {
+            var bom = new BOM
+            {
+                ProductID = dto.ProductID,
+                MaterialID = dto.MaterialID,
+                ProcessID = dto.ProcessID,
+                RequiredQty = dto.RequiredQty
+            };
+            await _bomRepository.CreateAsync(bom);
+            await _bomRepository.SaveChangesAsync();
+            return bom;
+
+        }
+
+        public async Task<ProcessMaster> UpdateProcessAsync(int id, ProcessUpdateDto dto)
+        {
+            var process = await _processMasterRepository.GetByIdAsync(id);
+            if (process == null) throw new KeyNotFoundException("공정을 찾을 수 없습니다.");
+
+            process.ProcessName = dto.ProcessName;
+            process.SequenceOrder = dto.SequenceOrder;
+
+            await _processMasterRepository.UpdateAsync(process);
+            await _processMasterRepository.SaveChangesAsync();
+
+            return process;
         }
     }
 }

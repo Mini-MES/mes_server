@@ -1,4 +1,5 @@
-﻿using mes_server.Models.Enum;
+﻿using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 
 namespace mes_server.Services.Interface
@@ -11,5 +12,9 @@ namespace mes_server.Services.Interface
         Task<IEnumerable<BadReasonMaster>> GetBadReasonByCodeAsync(ReasonCode code);
         Task<bool> ValidateBOMAsync(string productId);
         Task<ProcessMaster?> GetProcessBySequenceAsync(int sequence);
+        Task<ProcessMaster> CreateProcessAsync(ProcessCreateDto dto);
+        Task<BadReasonMaster> CreateBadReasonAsync(BadReasonCreateDto dto);
+        Task<BOM> AddBomAsync(BOMCreateDto dto);
+        Task<ProcessMaster> UpdateProcessAsync(int id, ProcessUpdateDto dto);
     }
 }

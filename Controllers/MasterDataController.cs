@@ -1,4 +1,5 @@
-﻿using mes_server.Models.Enum;
+﻿using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Mvc;
@@ -31,28 +32,17 @@ namespace mes_server.Controllers
         public async Task<IActionResult> GetProcesses() => Ok(await _masterDataService.GetProcessListAsync());
 
         [HttpPost("processes")]
-        public async Task<IActionResult> CreateProcess([FromBody] ProcessMaster process)
+        public async Task<IActionResult> CreateProcess([FromBody] ProcessCreateDto createDto)
         {
-            await _processService.CreateAsync(process);
-            await _processService.SaveChangesAsync();
-            return Ok(process);
+            var process = await _masterDataService.CreateProcessAsync(createDto);
+            return Ok(new { Message = "공정이 생성되었습니다.", data = process });
         }
 
         [HttpPut("processes/{id}")]
-        public async Task<IActionResult> UpdateProcess([FromRoute] int id, [FromBody] ProcessMaster process)
+        public async Task<IActionResult> UpdateProcess([FromRoute] int id, [FromBody] ProcessUpdateDto updateDto)
         {
-            var processToUpdate = await _processService.GetByIdAsync(id);
-
-            if (processToUpdate == null)
-            {
-                return NotFound();
-            }
-
-            process.ProcessID = id;
-
-            await _processService.UpdateAsync(process);
-            await _processService.SaveChangesAsync();
-            return Ok(process);
+            var updatedProcess = await _masterDataService.UpdateProcessAsync(id, updateDto);
+            return Ok(new { Message = "공정이 수정되었습니다.", data = updatedProcess });
         }
 
         // 공정 순서 관련
@@ -79,11 +69,10 @@ namespace mes_server.Controllers
         }
 
         [HttpPost("defect-reasons")]
-        public async Task<IActionResult> CreateDefectReason([FromBody] BadReasonMaster reason)
+        public async Task<IActionResult> CreateDefectReason([FromBody] BadReasonCreateDto createDto)
         {
-            await _badReasonService.CreateAsync(reason);
-            await _badReasonService.SaveChangesAsync();
-            return Ok(new { Message = "불량 사유가 성공적으로 생성되었습니다.", data = reason });
+            var reason = await _masterDataService.CreateBadReasonAsync(createDto);
+            return Ok(new { Message = "불량 사유가 생성되었습니다.", data = reason });
         }
 
         [HttpDelete("defect-reasons/{id}")]
@@ -92,7 +81,6 @@ namespace mes_server.Controllers
             var entity = await _badReasonService.GetByIdAsync(id);
             if (entity == null) return NotFound();
             await _badReasonService.DeleteAsync(entity);
-            await _badReasonService.SaveChangesAsync();
             return NoContent();
         }
 
@@ -104,10 +92,9 @@ namespace mes_server.Controllers
         public async Task<IActionResult> GetBom(string productId) => Ok(await _masterDataService.GetProductBOMAsync(productId));
 
         [HttpPost("bom")]
-        public async Task<IActionResult> AddBom([FromBody] BOM bom)
+        public async Task<IActionResult> AddBom([FromBody] BOMCreateDto createDto)
         {
-            await _bomService.CreateAsync(bom);
-            await _bomService.SaveChangesAsync();
+            var bom = await _masterDataService.AddBomAsync(createDto);
             return Ok(new { Message = "BOM이 성공적으로 추가되었습니다.", data = bom });
         }
 
@@ -117,7 +104,6 @@ namespace mes_server.Controllers
             var entity = await _bomService.GetByIdAsync(bomId);
             if (entity == null) return NotFound();
             await _bomService.DeleteAsync(entity);
-            await _bomService.SaveChangesAsync();
             return NoContent();
         }
     }

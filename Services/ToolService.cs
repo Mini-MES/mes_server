@@ -1,4 +1,5 @@
 ﻿using mes_server.Data;
+using mes_server.Models.DTOs.Tool;
 using mes_server.Models.Enum;
 using mes_server.Models.History;
 using mes_server.Models.Production;
@@ -90,10 +91,18 @@ namespace mes_server.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task RegisterToolAsync(Tool tool)
+        public async Task<Tool> RegisterToolAsync(CreateToolDto dto)
         {
+            var tool = new Tool
+            {
+                ToolName = dto.ToolName,
+                MaxUsageCount = dto.MaxUsageCount,
+                CurrentUsageCount = dto.CurrentUsageCount
+            };
             await _toolRepository.CreateAsync(tool);
             await _context.SaveChangesAsync();
+
+            return tool;
         }
     }
 }
