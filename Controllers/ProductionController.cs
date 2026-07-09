@@ -92,7 +92,7 @@ namespace mes_server.Controllers
                 ProcessID = registerDto.ProcessID,
                 ToolID = registerDto.ToolID,
                 ReasonCode = registerDto.ReasonCode,
-                UserID = registerDto.UserID,
+                UserID = string.Empty, // TODO: 실제 사용자 ID를 가져와서 설정
                 InputQty = registerDto.InputQty,
                 GoodQty = registerDto.GoodQty,
                 BadQty = registerDto.BadQty,
