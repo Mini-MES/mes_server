@@ -81,6 +81,7 @@ namespace mes_server.Services
                 StockQty = 0
             };
             await _materialRepository.CreateAsync(newMaterial);
+            await _context.SaveChangesAsync();
             return newMaterial;
         }
 

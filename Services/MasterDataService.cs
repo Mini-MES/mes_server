@@ -64,6 +64,7 @@ namespace mes_server.Services
                 SequenceOrder = dto.SequenceOrder
             };
             await _processMasterRepository.CreateAsync(process);
+            await _processMasterRepository.SaveChangesAsync();
 
             return process;
         }
@@ -76,6 +77,7 @@ namespace mes_server.Services
                 ReasonDescription = dto.Description
             };
             await _badReasonMasterRepository.CreateAsync(reason);
+            await _badReasonMasterRepository.SaveChangesAsync();
 
             return reason;
         }
@@ -90,6 +92,7 @@ namespace mes_server.Services
                 RequiredQty = dto.RequiredQty
             };
             await _bomRepository.CreateAsync(bom);
+            await _bomRepository.SaveChangesAsync();
             return bom;
 
         }
@@ -103,6 +106,7 @@ namespace mes_server.Services
             process.SequenceOrder = dto.SequenceOrder;
 
             await _processMasterRepository.UpdateAsync(process);
+            await _processMasterRepository.SaveChangesAsync();
 
             return process;
         }
