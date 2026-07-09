@@ -1,11 +1,11 @@
 ﻿using mes_server.Models.DTOs.Production;
-using mes_server.Models.History;
-using mes_server.Models.Production;
 using mes_server.Services.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mes_server.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ProductionController : ControllerBase

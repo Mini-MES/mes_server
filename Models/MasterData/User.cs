@@ -16,5 +16,7 @@ namespace mes_server.Models.MasterData
 
         [Required]
         public string PasswordHash { get; set; } = null!;
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiry { get; set; }
     }
 }
