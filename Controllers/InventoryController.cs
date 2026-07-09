@@ -1,4 +1,5 @@
-﻿using mes_server.Models.History;
+﻿using mes_server.Models.DTOs.Inventory;
+using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Mvc;
@@ -80,9 +81,9 @@ namespace mes_server.Controllers
         }
 
         [HttpGet("check-availability")]
-        public async Task<IActionResult> CheckAvailability([FromQuery] string productId, [FromQuery] int targetQty)
+        public async Task<IActionResult> CheckAvailability([FromBody] InventoryCheckDto checkDto)
         {
-            var isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(productId, targetQty);
+            var isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(checkDto.ProductId, checkDto.TargetQty);
             return Ok(new { Message = "가용 재고 검증 결과", data = isAvailable });
         }
 
