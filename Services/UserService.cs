@@ -1,10 +1,12 @@
 ﻿using mes_server.Data;
+using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.MasterData;
 using mes_server.Services.Interface;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace mes_server.Services
@@ -49,9 +51,60 @@ namespace mes_server.Services
             return tokenHandler.WriteToken(token);
         }
 
-        public async Task RegisterUserAsync(User user, string password)
+        private string GenerateRefreshToken()
         {
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            var randomNumber = new byte[32]; 
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                return Convert.ToBase64String(randomNumber);
+            }
+        }
+
+        public async Task<(string token, string refreshToken)> LoginAsync(LoginDto loginDto)
+        {
+            var user = await _userRepository.GetByUserNameAsync(loginDto.UserName);
+            if(user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+            {
+                throw new UnauthorizedAccessException("Invalid username or password.");
+            }
+
+            var token = GenerateJwtToken(user);
+            var refreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7); 
+            await _userRepository.UpdateAsync(user);
+            await _context.SaveChangesAsync();
+
+            return (token, refreshToken);
+        }
+
+        public async Task<(string token, string refreshToken)> RefreshTokenAsync(string token)
+        {
+            var user = await _userRepository.GetByRefreshTokenAsync(token);
+            if (user == null || user.RefreshTokenExpiry < DateTime.UtcNow)
+                throw new UnauthorizedAccessException("리프레시 토큰 만료");
+
+            var newToken = GenerateJwtToken(user);
+            var newRefreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = newRefreshToken;
+            await _userRepository.UpdateAsync(user);
+            await _context.SaveChangesAsync();
+
+            return (newToken, newRefreshToken);
+        }
+
+        public async Task RegisterUserAsync(UserRegisterDto dto)
+        {
+            var user = new User
+            {
+                UserID = dto.UserID,
+                UserName = dto.UserName,
+                UserRole = dto.UserRole
+            };
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
             await _userRepository.CreateAsync(user);
             await _context.SaveChangesAsync();
