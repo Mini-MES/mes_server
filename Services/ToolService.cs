@@ -1,4 +1,5 @@
 ﻿using mes_server.Data;
+using mes_server.Models.Enum;
 using mes_server.Models.History;
 using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
@@ -23,18 +24,44 @@ namespace mes_server.Services
             _toolHistoryRepository = toolHistoryRepository;
         }
 
-        public async Task UseToolAsync(string toolId, int usageAmount)
+        public async Task ChangeToolStatusAsync(string toolId, ToolStatus newStatus, ReasonCode reasonCode)
+        {
+            var tool = await _toolRepository.GetByIdAsync(toolId);
+            if (tool == null) throw new KeyNotFoundException("존재하지 않는 공구입니다.");
+
+            tool.Status = newStatus;
+
+            await _toolHistoryRepository.CreateAsync(new ToolHistory {
+                ToolID = toolId,
+                ChangeDate = DateTime.Now,
+                BeforeCount = tool.CurrentUsageCount,
+                Reason = reasonCode,
+            });
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UseToolAsync(string toolId, int usageAmount, ReasonCode reasonCode)
         {
             var tool = await _toolRepository.GetByIdAsync(toolId);
             if (tool == null) throw new KeyNotFoundException("존재하지 않는 툴입니다.");
 
             tool.CurrentUsageCount += usageAmount;
 
+            if (tool.CurrentUsageCount >= tool.MaxUsageCount)
+            {
+                tool.Status = ToolStatus.ReplaceWait; 
+            }
+            else if (tool.CurrentUsageCount >= (tool.MaxUsageCount * 0.9))
+            {
+                tool.Status = ToolStatus.Warning;   
+            }
+
             var history = new ToolHistory
             {
                 ToolID = toolId,
                 ChangeDate = DateTime.Now,
-                BeforeCount = tool.CurrentUsageCount - usageAmount
+                BeforeCount = tool.CurrentUsageCount - usageAmount,
             };
             await _toolHistoryRepository.CreateAsync(history);
 

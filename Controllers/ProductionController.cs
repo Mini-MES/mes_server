@@ -21,7 +21,7 @@ namespace mes_server.Controllers
         public async Task<IActionResult> CreateWorkOrder([FromBody] WorkOrder workOrder)
         {
             var result = await _productionService.CreateWorkOrderAsync(workOrder);
-            return Ok(new { Message = "생산 지시가 성공적으로 생성되었습니다.", Data = result });
+            return Ok(new { Message = "생산 지시가 성공적으로 생성되었습니다.", data = result });
         }
 
         // 생산 시작
@@ -29,7 +29,7 @@ namespace mes_server.Controllers
         public async Task<IActionResult> StartProduction([FromRoute] int orderId, [FromBody] string lotId)
         {
             var result = await _productionService.StartProductionAsync(orderId, lotId);
-            return Ok(new { Message = "생산이 성공적으로 시작되었습니다.", Data = result });
+            return Ok(new { Message = "생산이 성공적으로 시작되었습니다.", data = result });
         }
 
         // 생산 상태 조회
@@ -37,7 +37,7 @@ namespace mes_server.Controllers
         public async Task<IActionResult> GetProductionStatus([FromRoute] int orderId)
         {
             var result = await _productionService.GetProductionStatusAsync(orderId);
-            return Ok(new { Message = "생산 상태가 성공적으로 조회되었습니다.", Data = result });
+            return Ok(new { Message = "생산 상태가 성공적으로 조회되었습니다.", data = result });
         }
 
         // 생산 완료
@@ -85,7 +85,7 @@ namespace mes_server.Controllers
         public async Task<IActionResult> GetLotStatus([FromRoute] string lotId)
         {
             var result = await _productionService.GetLotStatusAsync(lotId);
-            return Ok(new { Message = "Lot 상태가 성공적으로 조회되었습니다.", Data = result });
+            return Ok(new { Message = "Lot 상태가 성공적으로 조회되었습니다.", data = result });
         }
     }
 }

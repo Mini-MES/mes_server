@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using mes_server.Models.Enum;
+using System.ComponentModel.DataAnnotations;
 
 namespace mes_server.Models.Production
 {
@@ -17,5 +18,8 @@ namespace mes_server.Models.Production
 
         [Required]
         public int CurrentUsageCount { get; set; }
+
+        [Required]
+        public ToolStatus Status { get; set; } = ToolStatus.Ready;
     }
 }

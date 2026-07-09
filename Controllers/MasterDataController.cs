@@ -75,7 +75,7 @@ namespace mes_server.Controllers
         public async Task<IActionResult> GetBadReasonByCode([FromRoute] ReasonCode code)
         {
             var reasons = await _masterDataService.GetBadReasonByCodeAsync(code);
-            return Ok(new { Message = "불량 사유가 성공적으로 조회되었습니다.", Data = reasons });
+            return Ok(new { Message = "불량 사유가 성공적으로 조회되었습니다.", data = reasons });
         }
 
         [HttpPost("defect-reasons")]
@@ -83,7 +83,7 @@ namespace mes_server.Controllers
         {
             await _badReasonService.CreateAsync(reason);
             await _badReasonService.SaveChangesAsync();
-            return Ok(new { Message = "불량 사유가 성공적으로 생성되었습니다.", Data = reason });
+            return Ok(new { Message = "불량 사유가 성공적으로 생성되었습니다.", data = reason });
         }
 
         [HttpDelete("defect-reasons/{id}")]
@@ -108,7 +108,7 @@ namespace mes_server.Controllers
         {
             await _bomService.CreateAsync(bom);
             await _bomService.SaveChangesAsync();
-            return Ok(new { Message = "BOM이 성공적으로 추가되었습니다.", Data = bom });
+            return Ok(new { Message = "BOM이 성공적으로 추가되었습니다.", data = bom });
         }
 
         [HttpDelete("bom/{bomId}")]
