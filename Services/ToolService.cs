@@ -93,7 +93,6 @@ namespace mes_server.Services
         public async Task RegisterToolAsync(Tool tool)
         {
             await _toolRepository.CreateAsync(tool);
-            await _context.SaveChangesAsync();
         }
     }
 }

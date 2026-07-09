@@ -93,5 +93,18 @@ namespace mes_server.Services
             return bom;
 
         }
+
+        public async Task<ProcessMaster> UpdateProcessAsync(int id, ProcessUpdateDto dto)
+        {
+            var process = await _processMasterRepository.GetByIdAsync(id);
+            if (process == null) throw new KeyNotFoundException("공정을 찾을 수 없습니다.");
+
+            process.ProcessName = dto.ProcessName;
+            process.SequenceOrder = dto.SequenceOrder;
+
+            await _processMasterRepository.UpdateAsync(process);
+
+            return process;
+        }
     }
 }

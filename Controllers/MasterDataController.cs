@@ -41,18 +41,8 @@ namespace mes_server.Controllers
         [HttpPut("processes/{id}")]
         public async Task<IActionResult> UpdateProcess([FromRoute] int id, [FromBody] ProcessUpdateDto updateDto)
         {
-            var processToUpdate = await _processService.GetByIdAsync(id);
-
-            if (processToUpdate == null)
-            {
-                return NotFound();
-            }
-
-            processToUpdate.ProcessName = updateDto.ProcessName;
-            processToUpdate.SequenceOrder = updateDto.SequenceOrder;
-
-            await _processService.UpdateAsync(processToUpdate);
-            return Ok(processToUpdate);
+            var updatedProcess = await _masterDataService.UpdateProcessAsync(id, updateDto);
+            return Ok(new { Message = "공정이 수정되었습니다.", data = updatedProcess });
         }
 
         // 공정 순서 관련

@@ -15,5 +15,6 @@ namespace mes_server.Services.Interface
         Task<ProcessMaster> CreateProcessAsync(ProcessCreateDto dto);
         Task<BadReasonMaster> CreateBadReasonAsync(BadReasonCreateDto dto);
         Task<BOM> AddBomAsync(BOMCreateDto dto);
+        Task<ProcessMaster> UpdateProcessAsync(int id, ProcessUpdateDto dto);
     }
 }
