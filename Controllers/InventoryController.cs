@@ -34,14 +34,21 @@ namespace mes_server.Controllers
         }
 
         [HttpPost("materials")]
-        public async Task<IActionResult> CreateMaterial([FromBody] RawMaterial material)
+        public async Task<IActionResult> CreateMaterial([FromBody] MaterialCreateDto createDto)
         {
+            var material = new RawMaterial
+            {
+                MaterialID = createDto.MaterialID,
+                MaterialName = createDto.MaterialName,
+                SafetyStock = createDto.SafetyStock
+            };
+
             var result = await _materialService.CreateAsync(material);
             return Ok(new { Message = "자재가 등록되었습니다.", data = result });
         }
 
         [HttpDelete("materials/{materialId}")]
-        public async Task<IActionResult> DeleteMaterial(string materialId)
+        public async Task<IActionResult> DeleteMaterial([FromRoute] string materialId)
         {
             var material = await _materialService.GetByIdAsync(materialId);
             if (material == null) return NotFound("자재를 찾을 수 없습니다.");
