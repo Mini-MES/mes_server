@@ -1,4 +1,5 @@
-﻿using mes_server.Models.Enum;
+﻿using mes_server.Models.DTOs.Tool;
+using mes_server.Models.Enum;
 using mes_server.Models.History;
 using mes_server.Models.Production;
 
@@ -11,6 +12,6 @@ namespace mes_server.Services.Interface
         Task<bool> CheckToolMaintenance(string toolId);
         Task<IEnumerable<ToolHistory>> GetToolHistoryAsync(string toolId);
         Task ResetToolCountAsync(string toolId);
-        Task RegisterToolAsync(Tool tool);
+        Task<Tool> RegisterToolAsync(CreateToolDto dto);
     }
 }

@@ -39,9 +39,9 @@ namespace mes_server.Controllers
 
         // 신규 공구 등록
         [HttpPost("register")]
-        public async Task<IActionResult> RegisterTool(Tool tool)
+        public async Task<IActionResult> RegisterTool(CreateToolDto dto)
         {
-            await _toolService.RegisterToolAsync(tool);
+            var tool = await _toolService.RegisterToolAsync(dto);
             return Ok(new { Message = "공구가 성공적으로 등록되었습니다.", data = tool });
         }
 

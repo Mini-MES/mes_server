@@ -21,15 +21,7 @@ namespace mes_server.Controllers
         [HttpPost("order")]
         public async Task<IActionResult> CreateWorkOrder([FromBody] WorkOrderCreateDto createDto)
         {
-            var workOrder = new WorkOrder
-            {
-                ProductID = createDto.ProductID,
-                TargetQty = createDto.TargetQty,
-                StartDate = createDto.StartDate,
-                DueDate = createDto.DueDate
-            };
-
-            var result = await _productionService.CreateWorkOrderAsync(workOrder);
+            var result = await _productionService.CreateWorkOrderAsync(createDto);
             return Ok(new { Message = "생산 지시가 성공적으로 생성되었습니다.", data = result });
         }
 
@@ -85,20 +77,7 @@ namespace mes_server.Controllers
         [HttpPost("performance/register")]
         public async Task<IActionResult> RegisterPerformance([FromBody] PerformanceRegisterDto registerDto)
         {
-            var result = new Performance
-            {
-                WorkOrderID = registerDto.WorkOrderID,
-                LotID = registerDto.LotID,
-                ProcessID = registerDto.ProcessID,
-                ToolID = registerDto.ToolID,
-                ReasonCode = registerDto.ReasonCode,
-                UserID = string.Empty, // TODO: 실제 사용자 ID를 가져와서 설정
-                InputQty = registerDto.InputQty,
-                GoodQty = registerDto.GoodQty,
-                BadQty = registerDto.BadQty,
-                WorkDate = DateTime.Now
-            };
-            await _productionService.RegisterPerformanceAsync(result);
+            var result = await _productionService.RegisterPerformanceAsync(registerDto);
             return Ok(new { Message = "실적이 성공적으로 등록되었습니다.", data = result });
         }
 

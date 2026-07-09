@@ -1,4 +1,5 @@
 ﻿using mes_server.Data;
+using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
 using mes_server.Models.History;
 using mes_server.Models.MasterData;
@@ -66,8 +67,16 @@ namespace mes_server.Services
             }
         }
 
-        public async Task<WorkOrder> CreateWorkOrderAsync(WorkOrder workOrder)
+        public async Task<WorkOrder> CreateWorkOrderAsync(WorkOrderCreateDto createDto)
         {
+            var workOrder = new WorkOrder
+            {
+                ProductID = createDto.ProductID,
+                TargetQty = createDto.TargetQty,
+                StartDate = createDto.StartDate,
+                DueDate = createDto.DueDate
+            };
+
             bool isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(workOrder.ProductID, workOrder.TargetQty);
             if (!isAvailable)
             {
@@ -88,9 +97,21 @@ namespace mes_server.Services
             return perf;
         }
 
-        public async Task RegisterPerformanceAsync(Performance perf)
+        public async Task<Performance> RegisterPerformanceAsync(PerformanceRegisterDto registerDto)
         {
-
+            var perf = new Performance
+            {
+                WorkOrderID = registerDto.WorkOrderID,
+                LotID = registerDto.LotID,
+                ProcessID = registerDto.ProcessID,
+                ToolID = registerDto.ToolID,
+                ReasonCode = registerDto.ReasonCode,
+                UserID = string.Empty, // TODO: 실제 사용자 ID를 가져와서 설정
+                InputQty = registerDto.InputQty,
+                GoodQty = registerDto.GoodQty,
+                BadQty = registerDto.BadQty,
+                WorkDate = DateTime.Now
+            };
 
             var lot = await _lotRepository.GetByIdAsync(perf.LotID);
             if (lot == null) throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
@@ -127,6 +148,8 @@ namespace mes_server.Services
             }
 
             await _context.SaveChangesAsync();
+
+            return perf;
         }
 
         public async Task<bool> IsOrderValid(int currentProcessId, int nextProcessId)
