@@ -1,4 +1,4 @@
-﻿using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 
@@ -18,6 +18,8 @@ namespace mes_server.Services.Interface
         Task<ProcessMaster> UpdateProcessAsync(int id, ProcessUpdateDto dto);
         Task<ProductMaster> CreateProductAsync(ProductCreateDto dto);
         Task<ProductMaster> UpdateProductAsync(string productId, ProductUpdateDto dto);
-        Task<bool> DeleteBomAsync(string productId, string materialId, int processId);
+        Task<bool> DeleteBomAsync(string productId, string childProductId, int processId);
+        Task<IEnumerable<ProductResponseDto>> GetProductsWithBOMAsync();
+        Task<ProductResponseDto?> GetProductWithBOMAsync(string productId);
     }
 }

@@ -1,8 +1,10 @@
-﻿using mes_server.Models.DTOs.MasterData;
+using mes_server.Data;
+using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Services.Interface;
+using Microsoft.EntityFrameworkCore;
 
 namespace mes_server.Services
 {
@@ -12,13 +14,16 @@ namespace mes_server.Services
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
         private readonly IGenericRepository<BadReasonMaster> _badReasonMasterRepository;
         private readonly IGenericRepository<ProductMaster> _productRepository;
+        private readonly MESDbContext _context;
 
         public MasterDataService(
+            MESDbContext context,
             IGenericRepository<BOM> bomRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,
             IGenericRepository<BadReasonMaster> badReasonMasterRepository,
             IGenericRepository<ProductMaster> productRepository)
         {
+            _context = context;
             _bomRepository = bomRepository;
             _processMasterRepository = processMasterRepository;
             _badReasonMasterRepository = badReasonMasterRepository;
@@ -58,11 +63,11 @@ namespace mes_server.Services
             var boms = await GetProductBOMAsync(productId);
             return boms != null && boms.Any();
         }
-        public async Task<bool> DeleteBomAsync(string productId, string materialId, int processId)
+        public async Task<bool> DeleteBomAsync(string productId, string childProductId, int processId)
         {
             var bom = await _bomRepository.FindAsync(b =>
                 b.ProductID == productId &&
-                b.MaterialID == materialId &&
+                b.ChildProductID == childProductId &&
                 b.ProcessID == processId);
 
             var entity = bom.SingleOrDefault();
@@ -105,7 +110,7 @@ namespace mes_server.Services
             var bom = new BOM
             {
                 ProductID = dto.ProductID,
-                MaterialID = dto.MaterialID,
+                ChildProductID = dto.ChildProductID,
                 ProcessID = dto.ProcessID,
                 RequiredQty = dto.RequiredQty
             };
@@ -140,7 +145,9 @@ namespace mes_server.Services
             {
                 ProductID = dto.ProductID,
                 ProductName = dto.ProductName,
-                StockQty = 0
+                ItemType = dto.ItemType,
+                StockQty = dto.StockQty,
+                SafetyStock = dto.SafetyStock
             };
 
             await _productRepository.CreateAsync(product);
@@ -155,9 +162,55 @@ namespace mes_server.Services
             product.ProductName = dto.ProductName;
             product.ItemType = dto.ItemType;
             product.StockQty = dto.StockQty;
+            product.SafetyStock = dto.SafetyStock;
             await _productRepository.UpdateAsync(product);
             await _productRepository.SaveChangesAsync();
             return product;
         }   
+
+        private ProductResponseDto MapToProductResponseDto(ProductMaster p)
+        {
+            return new ProductResponseDto
+            {
+                ProductID = p.ProductID,
+                ProductName = p.ProductName,
+                StockQty = p.StockQty,
+                SafetyStock = p.SafetyStock,
+                ItemType = p.ItemType,
+                BOMs = p.BOMs.Select(b => new BOMResponseDto
+                {
+                    ProductID = b.ProductID,
+                    ChildProductID = b.ChildProductID,
+                    ChildProductName = b.ChildProduct?.ProductName ?? string.Empty,
+                    RequiredQty = b.RequiredQty,
+                    ProcessID = b.ProcessID,
+                    ProcessName = b.Process?.ProcessName
+                }).ToList()
+            };
+        }
+
+        public async Task<IEnumerable<ProductResponseDto>> GetProductsWithBOMAsync()
+        {
+            var products = await _context.ProductMasters
+                .Include(p => p.BOMs)
+                    .ThenInclude(b => b.ChildProduct)
+                .Include(p => p.BOMs)
+                    .ThenInclude(b => b.Process)
+                .ToListAsync();
+
+            return products.Select(MapToProductResponseDto);
+        }
+
+        public async Task<ProductResponseDto?> GetProductWithBOMAsync(string productId)
+        {
+            var product = await _context.ProductMasters
+                .Include(p => p.BOMs)
+                    .ThenInclude(b => b.ChildProduct)
+                .Include(p => p.BOMs)
+                    .ThenInclude(b => b.Process)
+                .FirstOrDefaultAsync(p => p.ProductID == productId);
+
+            return product != null ? MapToProductResponseDto(product) : null;
+        }
     }
 }

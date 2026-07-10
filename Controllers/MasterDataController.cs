@@ -1,4 +1,4 @@
-﻿using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
@@ -13,20 +13,17 @@ namespace mes_server.Controllers
     public class MasterDataController : ControllerBase
     {
         private readonly IMasterDataService _masterDataService;
-        private readonly IGenericService<ProcessMaster> _processService;
         private readonly IGenericService<BadReasonMaster> _badReasonService;
         private readonly IGenericService<BOM> _bomService;
         private readonly IGenericService<ProductMaster> _productService;
 
         public MasterDataController(
             IMasterDataService masterDataService,
-            IGenericService<ProcessMaster> processService,
             IGenericService<BadReasonMaster> badReasonService,
             IGenericService<BOM> bomService,
             IGenericService<ProductMaster> productService)
         {
             _masterDataService = masterDataService;
-            _processService = processService;
             _badReasonService = badReasonService;
             _bomService = bomService;
             _productService = productService;
@@ -106,7 +103,7 @@ namespace mes_server.Controllers
         [HttpDelete("bom")]
         public async Task<IActionResult> RemoveBom([FromBody] BOMDeleteDto dto)
         {
-            var success = await _masterDataService.DeleteBomAsync(dto.ProductID, dto.MaterialID, dto.ProcessID);
+            var success = await _masterDataService.DeleteBomAsync(dto.ProductID, dto.ChildProductID, dto.ProcessID);
             if (!success) return NotFound("해당 BOM 데이터를 찾을 수 없습니다.");
 
             return NoContent();
@@ -116,7 +113,7 @@ namespace mes_server.Controllers
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts()
         {
-            var products = await _productService.GetAllAsync();
+            var products = await _masterDataService.GetProductsWithBOMAsync();
             return Ok(products);
         }
 
@@ -124,7 +121,7 @@ namespace mes_server.Controllers
         [HttpGet("products/{productId}")]
         public async Task<IActionResult> GetProduct(string productId)
         {
-            var product = await _productService.GetByIdAsync(productId);
+            var product = await _masterDataService.GetProductWithBOMAsync(productId);
             return product != null ? Ok(product) : NotFound();
         }
 

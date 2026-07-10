@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace mes_server.Models.MasterData
 {
@@ -10,11 +11,15 @@ namespace mes_server.Models.MasterData
         public string ProductID { get; set; } = null!;
 
         [ForeignKey("ProductID")]
+        [JsonIgnore]
         public ProductMaster? Product { get; set; }
 
         [Required]
-        [MaxLength(20)]
-        public string MaterialID { get; set; } = null!;
+        [MaxLength(50)]
+        public string ChildProductID { get; set; } = null!;
+
+        [ForeignKey("ChildProductID")]
+        public ProductMaster? ChildProduct { get; set; }
 
         [Required]
         public int RequiredQty { get; set; }

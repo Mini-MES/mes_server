@@ -1,4 +1,4 @@
-﻿using mes_server.Data;
+using mes_server.Data;
 using mes_server.Models.DTOs.Inventory;
 using mes_server.Models.History;
 using mes_server.Models.MasterData;
@@ -10,7 +10,6 @@ namespace mes_server.Services
 {
     public class InventoryService : IInventoryService
     {
-        private readonly IGenericRepository<RawMaterial> _materialRepository;
         private readonly IGenericRepository<ProductMaster> _productRepository;
         private readonly IGenericRepository<BOM> _bomRepository;
         private readonly IGenericRepository<WorkOrder> _workOrderRepository;
@@ -19,28 +18,26 @@ namespace mes_server.Services
 
         public InventoryService(
             MESDbContext context,
-            IGenericRepository<RawMaterial> materialRepository,
             IGenericRepository<ProductMaster> productRepository,
             IGenericRepository<BOM> bomRepository,
             IGenericRepository<WorkOrder> workOrderRepository,
             IGenericRepository<Shipment> shipmentRepository)
         {
             _context = context;
-            _materialRepository = materialRepository;
             _productRepository = productRepository;
             _bomRepository = bomRepository;
             _workOrderRepository = workOrderRepository;
             _shipmentRepository = shipmentRepository;
         }
 
-        public async Task UpdateStockAsync(string materialId, StockUpdateDto dto)
+        public async Task UpdateStockAsync(string productId, StockUpdateDto dto)
         {
-            var existingMaterial = await _materialRepository.GetByIdAsync(materialId);
-            if (existingMaterial == null) throw new KeyNotFoundException("자재를 찾을 수 없습니다.");
+            var existingProduct = await _productRepository.GetByIdAsync(productId);
+            if (existingProduct == null) throw new KeyNotFoundException("품목을 찾을 수 없습니다.");
 
-            existingMaterial.StockQty = dto.StockQty;
-            existingMaterial.MaterialName = dto.MaterialName;
-            existingMaterial.SafetyStock = dto.SafetyStock;
+            existingProduct.StockQty = dto.StockQty;
+            existingProduct.ProductName = dto.MaterialName;
+            existingProduct.SafetyStock = dto.SafetyStock;
 
             await _context.SaveChangesAsync();
         }
@@ -48,46 +45,21 @@ namespace mes_server.Services
         public async Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty)
         {
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
+            if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
+            
             var boms = await _bomRepository.FindAsync(b => b.ProductID == workOrder.ProductID && b.ProcessID == processId);
 
             foreach (var bom in boms)
             {
-                var product = await _productRepository.GetByIdAsync(bom.MaterialID);
-                if (product != null)
-                {
-                    if (product.StockQty < (bom.RequiredQty * productionQty))
-                        throw new InvalidOperationException($"재고 부족: {bom.MaterialID}");
+                var product = await _productRepository.GetByIdAsync(bom.ChildProductID);
+                if (product == null) throw new KeyNotFoundException($"품목을 찾을 수 없음: {bom.ChildProductID}");
 
-                    product.StockQty -= (bom.RequiredQty * productionQty);
-                }
-                else
-                {
-                    var material = await _materialRepository.GetByIdAsync(bom.MaterialID);
-                    if (material == null) throw new KeyNotFoundException($"품목을 찾을 수 없음: {bom.MaterialID}");
+                if (product.StockQty < (bom.RequiredQty * productionQty))
+                    throw new InvalidOperationException($"재고 부족: {bom.ChildProductID}");
 
-                    if (material.StockQty < (bom.RequiredQty * productionQty))
-                        throw new InvalidOperationException($"재고 부족: {bom.MaterialID}");
-
-                    material.StockQty -= (bom.RequiredQty * productionQty);
-                }
+                product.StockQty -= (bom.RequiredQty * productionQty);
             }
             await _context.SaveChangesAsync();
-        }
-
-        public async Task<RawMaterial> CreateMaterialAsync(MaterialCreateDto dto)
-        {
-            var existingMaterial = await _materialRepository.GetByIdAsync(dto.MaterialID);
-            if (existingMaterial != null) throw new InvalidOperationException("이미 존재하는 자재입니다.");
-            var newMaterial = new RawMaterial
-            {
-                MaterialID = dto.MaterialID,
-                MaterialName = dto.MaterialName,
-                SafetyStock = dto.SafetyStock,
-                StockQty = dto.StockQty,
-            };
-            await _materialRepository.CreateAsync(newMaterial);
-            await _context.SaveChangesAsync();
-            return newMaterial;
         }
 
         public async Task ReceiveFinishedProductAsync(int workOrderId, int productionQty)
@@ -103,10 +75,10 @@ namespace mes_server.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<RawMaterial>> GetLowStockMaterialsAsync()
+        public async Task<IEnumerable<ProductMaster>> GetLowStockMaterialsAsync()
         {
-            var materials = await _materialRepository.GetAllAsync();
-            return materials.Where(m => m.StockQty <= m.SafetyStock);
+            var products = await _productRepository.GetAllAsync();
+            return products.Where(m => m.StockQty <= m.SafetyStock);
         }
 
         public async Task<bool> CheckMaterialAvailabilityAsync(string productId, int targetQty)
@@ -114,7 +86,7 @@ namespace mes_server.Services
             var boms = await _bomRepository.FindAsync(b => b.ProductID == productId);
             foreach (var bom in boms)
             {
-                var material = await _materialRepository.GetByIdAsync(bom.MaterialID);
+                var material = await _productRepository.GetByIdAsync(bom.ChildProductID);
                 if (material == null || material.StockQty < (bom.RequiredQty * targetQty))
                     return false;
             }
@@ -145,20 +117,6 @@ namespace mes_server.Services
             await _shipmentRepository.CreateAsync(shipment);
 
             await _context.SaveChangesAsync();
-        }
-
-        public async Task<IEnumerable<RawMaterial>> SearchMaterialsAsync(string keyword)
-        {
-            var materials = await _materialRepository.GetAllAsync();
-
-            var query = materials.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(keyword))
-            {
-                query = query.Where(m => m.MaterialName != null && m.MaterialName.Contains(keyword));
-            }
-
-            return query.ToList();
         }
 
         public async Task AdjustProductStockAsync(string productId, int amount)

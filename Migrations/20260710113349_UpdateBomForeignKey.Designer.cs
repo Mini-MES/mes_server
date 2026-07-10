@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using mes_server.Data;
 
@@ -11,9 +12,11 @@ using mes_server.Data;
 namespace mes_server.Migrations
 {
     [DbContext(typeof(MESDbContext))]
-    partial class MESDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710113349_UpdateBomForeignKey")]
+    partial class UpdateBomForeignKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -47,10 +50,11 @@ namespace mes_server.Migrations
                     b.Property<int>("ProcessID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ReasonCode")
+                    b.Property<int>("ReasonCode")
                         .HasColumnType("int");
 
                     b.Property<string>("ToolID")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -156,9 +160,9 @@ namespace mes_server.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("ChildProductID")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<string>("MaterialID")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("ProcessID")
                         .HasColumnType("int");
@@ -166,9 +170,7 @@ namespace mes_server.Migrations
                     b.Property<int>("RequiredQty")
                         .HasColumnType("int");
 
-                    b.HasKey("ProductID", "ChildProductID", "ProcessID");
-
-                    b.HasIndex("ChildProductID");
+                    b.HasKey("ProductID", "MaterialID", "ProcessID");
 
                     b.HasIndex("ProcessID");
 
@@ -225,15 +227,34 @@ namespace mes_server.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("SafetyStock")
-                        .HasColumnType("int");
-
                     b.Property<int>("StockQty")
                         .HasColumnType("int");
 
                     b.HasKey("ProductID");
 
                     b.ToTable("ProductMasters");
+                });
+
+            modelBuilder.Entity("mes_server.Models.MasterData.RawMaterial", b =>
+                {
+                    b.Property<string>("MaterialID")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("MaterialName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("SafetyStock")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StockQty")
+                        .HasColumnType("int");
+
+                    b.HasKey("MaterialID");
+
+                    b.ToTable("RawMaterials");
                 });
 
             modelBuilder.Entity("mes_server.Models.MasterData.User", b =>
@@ -374,12 +395,14 @@ namespace mes_server.Migrations
                     b.HasOne("mes_server.Models.MasterData.BadReasonMaster", "BadReason")
                         .WithMany()
                         .HasForeignKey("ReasonCode")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("mes_server.Models.Production.Tool", "Tool")
                         .WithMany()
                         .HasForeignKey("ToolID")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("mes_server.Models.MasterData.User", "User")
                         .WithMany()
@@ -436,12 +459,6 @@ namespace mes_server.Migrations
 
             modelBuilder.Entity("mes_server.Models.MasterData.BOM", b =>
                 {
-                    b.HasOne("mes_server.Models.MasterData.ProductMaster", "ChildProduct")
-                        .WithMany()
-                        .HasForeignKey("ChildProductID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("mes_server.Models.MasterData.ProcessMaster", "Process")
                         .WithMany()
                         .HasForeignKey("ProcessID")
@@ -453,8 +470,6 @@ namespace mes_server.Migrations
                         .HasForeignKey("ProductID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("ChildProduct");
 
                     b.Navigation("Process");
 

@@ -1,4 +1,4 @@
-﻿using mes_server.Models.Enum;
+using mes_server.Models.Enum;
 
 namespace mes_server.Models.DTOs.MasterData
 {
@@ -6,6 +6,7 @@ namespace mes_server.Models.DTOs.MasterData
     {
         public string ProductName { get; set; } = null!;
         public ItemType ItemType { get; set; }
-         public int StockQty { get; set; }
+        public int StockQty { get; set; }
+        public int SafetyStock { get; set; }
     }
 }
