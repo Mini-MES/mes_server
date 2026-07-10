@@ -1,4 +1,4 @@
-﻿using mes_server.Data;
+using mes_server.Data;
 using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
 using mes_server.Models.History;
@@ -7,6 +7,7 @@ using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Repositories.Interface.History;
 using mes_server.Repositories.Interface.Production;
+using mes_server.Repositories.Interface.MasterData;
 using mes_server.Services.Interface;
 
 namespace mes_server.Services
@@ -17,6 +18,7 @@ namespace mes_server.Services
         private readonly IWorkOrderRepository _workOrderRepository;
         private readonly ILotRepository _lotRepository;
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
+        private readonly IBOMRepository _bomRepository;
         private readonly IInventoryService _inventoryService;
         private readonly MESDbContext _context;
 
@@ -25,6 +27,7 @@ namespace mes_server.Services
             IWorkOrderRepository workOrderRepository,
             ILotRepository lotRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,
+            IBOMRepository bomRepository,
             IInventoryService inventoryService)
         {
             _context = context;
@@ -32,6 +35,7 @@ namespace mes_server.Services
             _workOrderRepository = workOrderRepository;
             _lotRepository = lotRepository;
             _processMasterRepository = processMasterRepository;
+            _bomRepository = bomRepository;
             _inventoryService = inventoryService;
         }
 
@@ -42,6 +46,11 @@ namespace mes_server.Services
             if (lot == null)
             {
                 throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
+            }
+
+            if (lot.Status == LotStatus.HOLD)
+            {
+                throw new InvalidOperationException("보류(HOLD) 상태의 Lot은 공정을 이동할 수 없습니다. 보류 해제 또는 재작업 처리가 필요합니다.");
             }
 
             if (!await IsOrderValid(lot.CurrentProcessID, nextProcessId))
@@ -67,7 +76,27 @@ namespace mes_server.Services
             }
         }
 
-        public async Task<WorkOrder> CreateWorkOrderAsync(WorkOrderCreateDto createDto)
+        private string GenerateLotId()
+        {
+            var random = new Random();
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            var stringPart = new string(Enumerable.Repeat(chars, 4)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+            var numberPart = random.Next(100).ToString("D2");
+            return stringPart + numberPart;
+        }
+
+        private async Task<string> GenerateUniqueLotIdAsync()
+        {
+            string lotId;
+            do
+            {
+                lotId = GenerateLotId();
+            } while (await _lotRepository.GetByIdAsync(lotId) != null);
+            return lotId;
+        }
+
+        public async Task<WorkOrderResponseDto> CreateWorkOrderAsync(WorkOrderCreateDto createDto)
         {
             var workOrder = new WorkOrder
             {
@@ -77,18 +106,42 @@ namespace mes_server.Services
                 DueDate = createDto.DueDate
             };
 
-            bool isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(workOrder.ProductID, workOrder.TargetQty);
-            if (!isAvailable)
-            {
-                throw new InvalidOperationException("재고가 부족합니다.");
-            }
-
             workOrder.Status = OrderStatus.Created;
 
             await _workOrderRepository.CreateAsync(workOrder);
             await _context.SaveChangesAsync();
 
-            return workOrder;
+            var processList = await _processMasterRepository.GetAllAsync();
+            var firstProcess = processList.OrderBy(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
+            if (firstProcess == null)
+            {
+                throw new InvalidOperationException("등록된 공정이 존재하지 않아 Lot을 자동 생성할 수 없습니다.");
+            }
+
+            var lotId = await GenerateUniqueLotIdAsync();
+            var newLot = new Lot
+            {
+                LotID = lotId,
+                OrderID = workOrder.OrderID,
+                CurrentProcessID = firstProcess.Value,
+                Status = LotStatus.RELEASED
+            };
+            await _lotRepository.CreateAsync(newLot);
+            await _context.SaveChangesAsync();
+
+            return new WorkOrderResponseDto
+            {
+                OrderID = workOrder.OrderID,
+                ProductID = workOrder.ProductID,
+                TargetQty = workOrder.TargetQty,
+                TotalGoodQty = workOrder.TotalGoodQty,
+                TotalBadQty = workOrder.TotalBadQty,
+                Status = workOrder.Status,
+                OrderDate = workOrder.OrderDate,
+                StartDate = workOrder.StartDate,
+                DueDate = workOrder.DueDate,
+                LotID = lotId
+            };
         }
 
         public async Task<IEnumerable<Performance>> GetProductionStatusAsync(int orderId)
@@ -97,7 +150,7 @@ namespace mes_server.Services
             return perf;
         }
 
-        public async Task<Performance> RegisterPerformanceAsync(PerformanceRegisterDto registerDto)
+        public async Task<Performance> RegisterPerformanceAsync(PerformanceRegisterDto registerDto, string userId)
         {
             var perf = new Performance
             {
@@ -106,7 +159,7 @@ namespace mes_server.Services
                 ProcessID = registerDto.ProcessID,
                 ToolID = registerDto.ToolID,
                 ReasonCode = registerDto.ReasonCode,
-                UserID = string.Empty, // TODO: 실제 사용자 ID를 가져와서 설정
+                UserID = userId,
                 InputQty = registerDto.InputQty,
                 GoodQty = registerDto.GoodQty,
                 BadQty = registerDto.BadQty,
@@ -123,7 +176,6 @@ namespace mes_server.Services
             await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.GoodQty);
 
             workOrder.TotalBadQty += perf.BadQty;
-            workOrder.TotalGoodQty += perf.GoodQty;
 
             if (perf.BadQty > 0 && lot != null)
             {
@@ -131,19 +183,33 @@ namespace mes_server.Services
             }
 
             var processList = await _processMasterRepository.GetAllAsync();
-            var lastProcess = processList.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
-            if (lastProcess != null && perf.ProcessID == lastProcess)
+            var productBoms = await _bomRepository.FindAsync(b => b.ProductID == workOrder.ProductID);
+            var productProcessIds = productBoms.Select(b => b.ProcessID).Distinct().ToList();
+
+            int? lastProcessId = null;
+            if (productProcessIds.Any())
             {
-                await _inventoryService.ReceiveFinishedProductAsync(perf.WorkOrderID, perf.GoodQty);
+                var productProcesses = processList.Where(p => productProcessIds.Contains(p.ProcessID));
+                lastProcessId = productProcesses.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
             }
 
-
-            if (workOrder != null && workOrder.Status != OrderStatus.Completed)
+            if (lastProcessId == null)
             {
-                if (workOrder.TotalGoodQty >= workOrder.TargetQty)
+                lastProcessId = processList.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
+            }
+            
+            if (lastProcessId != null && perf.ProcessID == lastProcessId)
+            {
+                workOrder.TotalGoodQty += perf.GoodQty;
+                await _inventoryService.ReceiveFinishedProductAsync(perf.WorkOrderID, perf.GoodQty);
+
+                if (workOrder != null && workOrder.Status != OrderStatus.Completed)
                 {
-                    workOrder.Status = OrderStatus.Completed;
-                    await CompleteWorkOrderAsync(workOrder.OrderID);
+                    if (workOrder.TotalGoodQty >= workOrder.TargetQty)
+                    {
+                        workOrder.Status = OrderStatus.Completed;
+                        await CompleteWorkOrderAsync(workOrder.OrderID);
+                    }
                 }
             }
 
@@ -164,27 +230,32 @@ namespace mes_server.Services
             return nextProc.SequenceOrder == currentProc.SequenceOrder + 1; // 다음 공정인지 체크
         }
 
-        public async Task<string> StartProductionAsync(int orderId, string lotId)
+        public async Task<string> StartProductionAsync(int orderId)
         {
             var order = await _workOrderRepository.GetByIdAsync(orderId);
             if (order == null || order.Status == OrderStatus.Completed)
                 throw new InvalidOperationException("진행 불가능한 생산지시입니다.");
 
-            var newLot = new Lot { LotID = lotId, OrderID = orderId, CurrentProcessID = 1, Status = LotStatus.WIP };
-            await _lotRepository.CreateAsync(newLot);
+            var lots = await _lotRepository.FindAsync(l => l.OrderID == orderId);
+            var lot = lots.FirstOrDefault();
+            if (lot == null)
+            {
+                throw new KeyNotFoundException("해당 생산지시에 연결된 Lot이 존재하지 않습니다.");
+            }
 
+            lot.Status = LotStatus.WIP;
             order.Status = OrderStatus.InProgress;
             await _context.SaveChangesAsync();
 
-            return lotId;
+            return lot.LotID;
         }
-        public async Task MoveProcessAsync(PerformanceRegisterDto perfDto, int nextProcessId)
+        public async Task MoveProcessAsync(PerformanceRegisterDto perfDto, int nextProcessId, string userId)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                await RegisterPerformanceAsync(perfDto);
+                await RegisterPerformanceAsync(perfDto, userId);
                 await ChangeLotProcessAsync(perfDto.LotID, nextProcessId);
                 await transaction.CommitAsync();
 
@@ -228,6 +299,12 @@ namespace mes_server.Services
                 throw new InvalidOperationException("이미 진행 중이거나 완료된 생산 지시는 삭제할 수 없습니다.");
             }
 
+            var lots = await _lotRepository.FindAsync(l => l.OrderID == orderId);
+            foreach (var lot in lots)
+            {
+                await _lotRepository.DeleteAsync(lot);
+            }
+
             await _workOrderRepository.DeleteAsync(existingOrder);
             await _context.SaveChangesAsync();
         }
@@ -242,6 +319,29 @@ namespace mes_server.Services
             }
 
             return lot;
+        }
+
+        public async Task<WorkOrderResponseDto?> GetWorkOrderByIdAsync(int orderId)
+        {
+            var order = await _workOrderRepository.GetByIdAsync(orderId);
+            if (order == null) return null;
+
+            var lots = await _lotRepository.FindAsync(l => l.OrderID == orderId);
+            var lotId = lots.FirstOrDefault()?.LotID;
+
+            return new WorkOrderResponseDto
+            {
+                OrderID = order.OrderID,
+                ProductID = order.ProductID,
+                TargetQty = order.TargetQty,
+                TotalGoodQty = order.TotalGoodQty,
+                TotalBadQty = order.TotalBadQty,
+                Status = order.Status,
+                OrderDate = order.OrderDate,
+                StartDate = order.StartDate,
+                DueDate = order.DueDate,
+                LotID = lotId
+            };
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using mes_server.Models.History;
+using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +15,6 @@ namespace mes_server.Data
         public DbSet<User> Users { get; set; }
         public DbSet<ProcessMaster> ProcessMasters { get; set; }
         public DbSet<ProductMaster> ProductMasters { get; set; }
-        public DbSet<RawMaterial> RawMaterials { get; set; }
         public DbSet<BadReasonMaster> BadReasonMasters { get; set; }
         public DbSet<BOM> BOMs { get; set; }
 
@@ -33,7 +32,7 @@ namespace mes_server.Data
         {
             // BOM 복합키 설정
             modelBuilder.Entity<BOM>()
-                .HasKey(b => new { b.ProductID, b.MaterialID, b.ProcessID });
+                .HasKey(b => new { b.ProductID, b.ChildProductID, b.ProcessID });
 
             // BOM 관계 설정
             modelBuilder.Entity<BOM>()
@@ -43,9 +42,9 @@ namespace mes_server.Data
                 .OnDelete(DeleteBehavior.Restrict); 
 
             modelBuilder.Entity<BOM>()
-                .HasOne(b => b.Material)       
-                .WithMany()                   
-                .HasForeignKey(b => b.MaterialID) 
+                .HasOne(b => b.ChildProduct)
+                .WithMany()
+                .HasForeignKey(b => b.ChildProductID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<BOM>()

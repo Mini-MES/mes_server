@@ -1,4 +1,4 @@
-﻿using mes_server.Models.DTOs.Inventory;
+using mes_server.Models.DTOs.Inventory;
 using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
@@ -13,46 +13,17 @@ namespace mes_server.Controllers
     public class InventoryController : ControllerBase
     {
         private readonly IInventoryService _inventoryService;           
-        private readonly IGenericService<RawMaterial> _materialService; 
         private readonly IGenericService<Shipment> _shipmentService;    
 
         public InventoryController(
             IInventoryService inventoryService,
-            IGenericService<RawMaterial> materialService,
             IGenericService<Shipment> shipmentService)
         {
             _inventoryService = inventoryService;
-            _materialService = materialService;
             _shipmentService = shipmentService;
         }
 
-        // --- 1. 단순 CRUD (BaseService 활용) ---
-
-        [HttpGet("materials")]
-        public async Task<IActionResult> GetAllMaterials()
-        {
-            var result = await _materialService.GetAllAsync();
-            return Ok(new { Data = result });
-        }
-
-        [HttpPost("materials")]
-        public async Task<IActionResult> CreateMaterial([FromBody] MaterialCreateDto createDto)
-        {
-            var result = await _inventoryService.CreateMaterialAsync(createDto);
-            return Ok(new { Message = "자재가 등록되었습니다.", data = result });
-        }
-
-        [HttpDelete("materials/{materialId}")]
-        public async Task<IActionResult> DeleteMaterial([FromRoute] string materialId)
-        {
-            var material = await _materialService.GetByIdAsync(materialId);
-            if (material == null) return NotFound("자재를 찾을 수 없습니다.");
-
-            await _materialService.DeleteAsync(material);
-            return Ok(new { Message = "자재가 삭제되었습니다." });
-        }
-
-        // --- 2. 비즈니스 로직 (InventoryService 활용) ---
+        // --- 1. 비즈니스 로직 (InventoryService 활용) ---
 
         [HttpPost("update-stock/{materialId}")]
         public async Task<IActionResult> UpdateStock([FromRoute] string materialId, [FromBody] StockUpdateDto dto)
@@ -66,13 +37,6 @@ namespace mes_server.Controllers
         {
             var result = await _shipmentService.GetAllAsync();
             return Ok(new { Data = result.OrderByDescending(s => s.ShipmentDate) });
-        }
-
-        [HttpGet("materials/search")]
-        public async Task<IActionResult> SearchMaterials([FromQuery] string keyword)
-        {
-            var result = await _inventoryService.SearchMaterialsAsync(keyword);
-            return Ok(new { Data = result });
         }
 
         [HttpGet("low-stock")]

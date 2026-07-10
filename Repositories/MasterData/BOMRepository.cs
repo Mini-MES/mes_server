@@ -1,4 +1,4 @@
-﻿using mes_server.Data;
+using mes_server.Data;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Generic;
 using mes_server.Repositories.Interface.MasterData;
@@ -15,7 +15,8 @@ namespace mes_server.Repositories.MasterData
         {
             return await Context.BOMs
                 .Where(b => b.ProductID == productId)
-                .Include(b => b.Material)
+                .Include(b => b.Process)
+                .Include(b => b.ChildProduct)
                 .ToListAsync();
         }
     }

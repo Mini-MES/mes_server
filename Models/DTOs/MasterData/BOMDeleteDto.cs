@@ -1,10 +1,9 @@
 namespace mes_server.Models.DTOs.MasterData
 {
-    public class BOMCreateDto
+    public class BOMDeleteDto
     {
         public string ProductID { get; set; } = null!;
         public string ChildProductID { get; set; } = null!;
         public int ProcessID { get; set; }
-        public int RequiredQty { get; set; }
     }
 }

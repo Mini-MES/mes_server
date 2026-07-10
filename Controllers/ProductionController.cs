@@ -1,4 +1,4 @@
-﻿using mes_server.Models.DTOs.Production;
+using mes_server.Models.DTOs.Production;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,9 +27,9 @@ namespace mes_server.Controllers
 
         // 생산 시작
         [HttpPost("start/{orderId}")]
-        public async Task<IActionResult> StartProduction([FromRoute] int orderId, [FromBody] StartProductionDto startDto)
+        public async Task<IActionResult> StartProduction([FromRoute] int orderId)
         {
-            var result = await _productionService.StartProductionAsync(orderId, startDto.lotId);
+            var result = await _productionService.StartProductionAsync(orderId);
             return Ok(new { Message = "생산이 성공적으로 시작되었습니다.", data = result });
         }
 
@@ -57,6 +57,14 @@ namespace mes_server.Controllers
             return Ok(new { Message = "생산 지시가 성공적으로 수정되었습니다." });
         }
 
+        // 생산 지시 단일 조회
+        [HttpGet("order/{orderId}")]
+        public async Task<IActionResult> GetWorkOrder([FromRoute] int orderId)
+        {
+            var result = await _productionService.GetWorkOrderByIdAsync(orderId);
+            return result != null ? Ok(new { Message = "생산 지시가 성공적으로 조회되었습니다.", data = result }) : NotFound("생산 지시를 찾을 수 없습니다.");
+        }
+
         // 생산 삭제
         [HttpDelete("order/{orderId}")]
         public async Task<IActionResult> DeleteWorkOrder(int orderId)
@@ -69,7 +77,8 @@ namespace mes_server.Controllers
         [HttpPost("performance/move")]
         public async Task<IActionResult> MoveProcess([FromBody] PerformanceRegisterDto perfDto, [FromQuery] int nextProcessId)
         {
-            await _productionService.MoveProcessAsync(perfDto, nextProcessId);
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
+            await _productionService.MoveProcessAsync(perfDto, nextProcessId, userId);
             return Ok(new { Message = "공정 이동이 성공적으로 완료되었습니다." });
         }
 
@@ -77,7 +86,8 @@ namespace mes_server.Controllers
         [HttpPost("performance/register")]
         public async Task<IActionResult> RegisterPerformance([FromBody] PerformanceRegisterDto registerDto)
         {
-            var result = await _productionService.RegisterPerformanceAsync(registerDto);
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
+            var result = await _productionService.RegisterPerformanceAsync(registerDto, userId);
             return Ok(new { Message = "실적이 성공적으로 등록되었습니다.", data = result });
         }
 

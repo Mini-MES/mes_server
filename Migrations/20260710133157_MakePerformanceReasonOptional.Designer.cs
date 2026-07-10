@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using mes_server.Data;
 
@@ -11,9 +12,11 @@ using mes_server.Data;
 namespace mes_server.Migrations
 {
     [DbContext(typeof(MESDbContext))]
-    partial class MESDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710133157_MakePerformanceReasonOptional")]
+    partial class MakePerformanceReasonOptional
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

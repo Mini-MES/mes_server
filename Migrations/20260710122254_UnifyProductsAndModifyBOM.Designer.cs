@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using mes_server.Data;
 
@@ -11,9 +12,11 @@ using mes_server.Data;
 namespace mes_server.Migrations
 {
     [DbContext(typeof(MESDbContext))]
-    partial class MESDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710122254_UnifyProductsAndModifyBOM")]
+    partial class UnifyProductsAndModifyBOM
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -47,10 +50,11 @@ namespace mes_server.Migrations
                     b.Property<int>("ProcessID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ReasonCode")
+                    b.Property<int>("ReasonCode")
                         .HasColumnType("int");
 
                     b.Property<string>("ToolID")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -374,12 +378,14 @@ namespace mes_server.Migrations
                     b.HasOne("mes_server.Models.MasterData.BadReasonMaster", "BadReason")
                         .WithMany()
                         .HasForeignKey("ReasonCode")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("mes_server.Models.Production.Tool", "Tool")
                         .WithMany()
                         .HasForeignKey("ToolID")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("mes_server.Models.MasterData.User", "User")
                         .WithMany()

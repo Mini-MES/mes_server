@@ -1,4 +1,4 @@
-﻿using mes_server.Models.Enum;
+using mes_server.Models.Enum;
 using System.ComponentModel.DataAnnotations;
 
 namespace mes_server.Models.MasterData
@@ -20,5 +20,8 @@ namespace mes_server.Models.MasterData
 
         [Required]
         public int StockQty { get; set; }
+
+        [Required]
+        public int SafetyStock { get; set; }
     }
 }
