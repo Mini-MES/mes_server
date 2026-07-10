@@ -16,17 +16,20 @@ namespace mes_server.Controllers
         private readonly IGenericService<ProcessMaster> _processService;
         private readonly IGenericService<BadReasonMaster> _badReasonService;
         private readonly IGenericService<BOM> _bomService;
+        private readonly IGenericService<ProductMaster> _productService;
 
         public MasterDataController(
             IMasterDataService masterDataService,
             IGenericService<ProcessMaster> processService,
             IGenericService<BadReasonMaster> badReasonService,
-            IGenericService<BOM> bomService)
+            IGenericService<BOM> bomService,
+            IGenericService<ProductMaster> productService)
         {
             _masterDataService = masterDataService;
             _processService = processService;
             _badReasonService = badReasonService;
             _bomService = bomService;
+            _productService = productService;
         }
 
         // 공정 관련 
@@ -107,6 +110,48 @@ namespace mes_server.Controllers
             if (entity == null) return NotFound();
             await _bomService.DeleteAsync(entity);
             return NoContent();
+        }
+
+        // 원자재 및 반제품 전체 조회
+        [HttpGet("products")]
+        public async Task<IActionResult> GetProducts()
+        {
+            var products = await _productService.GetAllAsync();
+            return Ok(products);
+        }
+
+        // 원자재 및 반제품 특정 조회
+        [HttpGet("products/{productId}")]
+        public async Task<IActionResult> GetProduct(string productId)
+        {
+            var product = await _productService.GetByIdAsync(productId);
+            return product != null ? Ok(product) : NotFound();
+        }
+
+        // 원자재 및 반제품 생성
+        [HttpPost("product")]
+        public async Task<IActionResult> CreateProduct([FromBody] ProductCreateDto createDto)
+        {
+            var product = await _masterDataService.CreateProductAsync(createDto);
+            return Ok(new { Message = "제품이 성공적으로 생성되었습니다.", data = product });
+        }
+
+        // 원자재 및 반제품 삭제
+        [HttpDelete("products/{productId}")]
+        public async Task<IActionResult> DeleteProduct([FromRoute] string productId)
+        {
+            var product = await _productService.GetByIdAsync(productId);
+            if (product == null) return NotFound();
+            await _productService.DeleteAsync(product);
+            return NoContent();
+        }
+
+        // 원자재 및 반제품 수정
+        [HttpPut("products/{productId}")]
+        public async Task<IActionResult> UpdateProduct([FromRoute] string productId, [FromBody] ProductUpdateDto updateDto)
+        {
+            var updatedProduct = await _masterDataService.UpdateProductAsync(productId, updateDto);
+            return Ok(new { Message = "제품이 성공적으로 수정되었습니다.", data = updatedProduct });
         }
     }
 }

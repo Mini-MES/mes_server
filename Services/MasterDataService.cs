@@ -11,15 +11,18 @@ namespace mes_server.Services
         private readonly IGenericRepository<BOM> _bomRepository;
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
         private readonly IGenericRepository<BadReasonMaster> _badReasonMasterRepository;
+        private readonly IGenericRepository<ProductMaster> _productRepository;
 
         public MasterDataService(
             IGenericRepository<BOM> bomRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,
-            IGenericRepository<BadReasonMaster> badReasonMasterRepository)
+            IGenericRepository<BadReasonMaster> badReasonMasterRepository,
+            IGenericRepository<ProductMaster> productRepository)
         {
             _bomRepository = bomRepository;
             _processMasterRepository = processMasterRepository;
             _badReasonMasterRepository = badReasonMasterRepository;
+            _productRepository = productRepository;
         }
 
 
@@ -110,5 +113,36 @@ namespace mes_server.Services
 
             return process;
         }
+
+        public async Task<ProductMaster> CreateProductAsync(ProductCreateDto dto)
+        {
+            if(await _productRepository.FindAsync(p => p.ProductID == dto.ProductID) is { } existingProduct)
+            {
+                throw new InvalidOperationException($"Product with ID '{dto.ProductID}' already exists.");
+            }
+
+            var product = new ProductMaster
+            {
+                ProductID = dto.ProductID,
+                ProductName = dto.ProductName,
+                StockQty = 0
+            };
+
+            await _productRepository.CreateAsync(product);
+            await _productRepository.SaveChangesAsync();
+            return product;
+        }
+
+        public async Task<ProductMaster> UpdateProductAsync(string productId, ProductUpdateDto dto)
+        {
+            var product = await _productRepository.GetByIdAsync(productId);
+            if (product == null) throw new KeyNotFoundException("제품을 찾을 수 없습니다.");
+            product.ProductName = dto.ProductName;
+            product.ItemType = dto.ItemType;
+            product.StockQty = dto.StockQty;
+            await _productRepository.UpdateAsync(product);
+            await _productRepository.SaveChangesAsync();
+            return product;
+        }   
     }
 }
