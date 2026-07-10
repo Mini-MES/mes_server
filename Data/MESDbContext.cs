@@ -43,12 +43,6 @@ namespace mes_server.Data
                 .OnDelete(DeleteBehavior.Restrict); 
 
             modelBuilder.Entity<BOM>()
-                .HasOne(b => b.Material)       
-                .WithMany()                   
-                .HasForeignKey(b => b.MaterialID) 
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<BOM>()
                 .HasOne(b => b.Process)
                 .WithMany()
                 .HasForeignKey(b => b.ProcessID);

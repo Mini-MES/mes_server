@@ -16,9 +16,6 @@ namespace mes_server.Models.MasterData
         [MaxLength(20)]
         public string MaterialID { get; set; } = null!;
 
-        [ForeignKey("MaterialID")]
-
-        public RawMaterial? Material { get; set; }
         [Required]
         public int RequiredQty { get; set; }
 

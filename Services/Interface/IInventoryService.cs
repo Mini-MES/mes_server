@@ -16,5 +16,7 @@ namespace mes_server.Services.Interface
             
             Task ShipFinishedProductAsync(string productId, int workOrderId, int quantity, string destination);
             Task<RawMaterial> CreateMaterialAsync(MaterialCreateDto dto);
+
+            Task AdjustProductStockAsync(string productId, int amount);
         }
 }

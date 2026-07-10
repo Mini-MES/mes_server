@@ -18,5 +18,6 @@ namespace mes_server.Services.Interface
         Task<ProcessMaster> UpdateProcessAsync(int id, ProcessUpdateDto dto);
         Task<ProductMaster> CreateProductAsync(ProductCreateDto dto);
         Task<ProductMaster> UpdateProductAsync(string productId, ProductUpdateDto dto);
+        Task<bool> DeleteBomAsync(string productId, string materialId, int processId);
     }
 }

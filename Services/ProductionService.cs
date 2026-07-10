@@ -17,6 +17,7 @@ namespace mes_server.Services
         private readonly IWorkOrderRepository _workOrderRepository;
         private readonly ILotRepository _lotRepository;
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
+        private readonly IGenericRepository<BOM> _bomRepository;
         private readonly IInventoryService _inventoryService;
         private readonly MESDbContext _context;
 
@@ -25,6 +26,7 @@ namespace mes_server.Services
             IWorkOrderRepository workOrderRepository,
             ILotRepository lotRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,
+            IGenericRepository<BOM> bomRepository,
             IInventoryService inventoryService)
         {
             _context = context;
@@ -32,6 +34,7 @@ namespace mes_server.Services
             _workOrderRepository = workOrderRepository;
             _lotRepository = lotRepository;
             _processMasterRepository = processMasterRepository;
+            _bomRepository = bomRepository;
             _inventoryService = inventoryService;
         }
 
@@ -124,6 +127,14 @@ namespace mes_server.Services
 
             workOrder.TotalBadQty += perf.BadQty;
             workOrder.TotalGoodQty += perf.GoodQty;
+
+            var bomResults = await _bomRepository.FindAsync(b => b.ProcessID == perf.ProcessID
+                                                      && b.ProductID == workOrder.ProductID);
+
+            foreach (var bom in bomResults)
+            {
+                await _inventoryService.AdjustProductStockAsync(bom.MaterialID, perf.GoodQty);
+            }
 
             if (perf.BadQty > 0 && lot != null)
             {

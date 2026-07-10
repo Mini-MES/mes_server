@@ -103,12 +103,12 @@ namespace mes_server.Controllers
             return Ok(new { Message = "BOM이 성공적으로 추가되었습니다.", data = bom });
         }
 
-        [HttpDelete("bom/{bomId}")]
-        public async Task<IActionResult> RemoveBom([FromRoute] int bomId)
+        [HttpDelete("bom")]
+        public async Task<IActionResult> RemoveBom([FromBody] BOMDeleteDto dto)
         {
-            var entity = await _bomService.GetByIdAsync(bomId);
-            if (entity == null) return NotFound();
-            await _bomService.DeleteAsync(entity);
+            var success = await _masterDataService.DeleteBomAsync(dto.ProductID, dto.MaterialID, dto.ProcessID);
+            if (!success) return NotFound("해당 BOM 데이터를 찾을 수 없습니다.");
+
             return NoContent();
         }
 

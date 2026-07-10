@@ -15,7 +15,7 @@ namespace mes_server.Repositories.MasterData
         {
             return await Context.BOMs
                 .Where(b => b.ProductID == productId)
-                .Include(b => b.Material)
+                .Include(b => b.Process)
                 .ToListAsync();
         }
     }

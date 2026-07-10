@@ -58,6 +58,21 @@ namespace mes_server.Services
             var boms = await GetProductBOMAsync(productId);
             return boms != null && boms.Any();
         }
+        public async Task<bool> DeleteBomAsync(string productId, string materialId, int processId)
+        {
+            var bom = await _bomRepository.FindAsync(b =>
+                b.ProductID == productId &&
+                b.MaterialID == materialId &&
+                b.ProcessID == processId);
+
+            var entity = bom.SingleOrDefault();
+            if (entity == null) return false;
+
+            await _bomRepository.DeleteAsync(entity);
+            await _bomRepository.SaveChangesAsync();
+            return true;
+        }
+
 
         public async Task<ProcessMaster> CreateProcessAsync(ProcessCreateDto dto)
         {
@@ -116,7 +131,7 @@ namespace mes_server.Services
 
         public async Task<ProductMaster> CreateProductAsync(ProductCreateDto dto)
         {
-            if(await _productRepository.FindAsync(p => p.ProductID == dto.ProductID) is { } existingProduct)
+            if(await _productRepository.GetByIdAsync(dto.ProductID) != null)
             {
                 throw new InvalidOperationException($"Product with ID '{dto.ProductID}' already exists.");
             }

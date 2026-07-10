@@ -48,23 +48,28 @@ namespace mes_server.Services
         public async Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty)
         {
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
-            if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
-
             var boms = await _bomRepository.FindAsync(b => b.ProductID == workOrder.ProductID && b.ProcessID == processId);
 
             foreach (var bom in boms)
             {
-                var material = await _materialRepository.GetByIdAsync(bom.MaterialID);
-                if (material == null)
+                var product = await _productRepository.GetByIdAsync(bom.MaterialID);
+                if (product != null)
                 {
-                    throw new KeyNotFoundException($"자재를 찾을 수 없습니다. (MaterialID: {bom.MaterialID})");
+                    if (product.StockQty < (bom.RequiredQty * productionQty))
+                        throw new InvalidOperationException($"재고 부족: {bom.MaterialID}");
+
+                    product.StockQty -= (bom.RequiredQty * productionQty);
                 }
-                var requiredQty = bom.RequiredQty * productionQty;
-                if (material.StockQty < requiredQty)
+                else
                 {
-                    throw new InvalidOperationException($"재고 부족: 자재({bom.MaterialID}) 필요({requiredQty}) / 현재({material.StockQty})");
+                    var material = await _materialRepository.GetByIdAsync(bom.MaterialID);
+                    if (material == null) throw new KeyNotFoundException($"품목을 찾을 수 없음: {bom.MaterialID}");
+
+                    if (material.StockQty < (bom.RequiredQty * productionQty))
+                        throw new InvalidOperationException($"재고 부족: {bom.MaterialID}");
+
+                    material.StockQty -= (bom.RequiredQty * productionQty);
                 }
-                material.StockQty -= requiredQty;
             }
             await _context.SaveChangesAsync();
         }
@@ -154,6 +159,16 @@ namespace mes_server.Services
             }
 
             return query.ToList();
+        }
+
+        public async Task AdjustProductStockAsync(string productId, int amount)
+        {
+            var product = await _productRepository.GetByIdAsync(productId);
+            if (product == null) throw new KeyNotFoundException("제품을 찾을 수 없습니다.");
+
+            product.StockQty += amount;
+
+            await _context.SaveChangesAsync();
         }
     }
 }
