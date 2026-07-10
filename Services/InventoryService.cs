@@ -78,7 +78,7 @@ namespace mes_server.Services
                 MaterialID = dto.MaterialID,
                 MaterialName = dto.MaterialName,
                 SafetyStock = dto.SafetyStock,
-                StockQty = 0
+                StockQty = dto.StockQty,
             };
             await _materialRepository.CreateAsync(newMaterial);
             await _context.SaveChangesAsync();

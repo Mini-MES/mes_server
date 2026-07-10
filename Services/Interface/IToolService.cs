@@ -7,8 +7,8 @@ namespace mes_server.Services.Interface
 {
     public interface IToolService
     {
-        Task ChangeToolStatusAsync(string toolId, ToolStatus newStatus, ReasonCode reasonCode);
-        Task UseToolAsync(string toolId, int usageAmount, ReasonCode reasonCode);
+        Task ChangeToolStatusAsync(string toolId, ToolStatus newStatus, string reason);
+        Task UseToolAsync(string toolId, int usageAmount);
         Task<bool> CheckToolMaintenance(string toolId);
         Task<IEnumerable<ToolHistory>> GetToolHistoryAsync(string toolId);
         Task ResetToolCountAsync(string toolId);

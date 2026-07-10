@@ -64,7 +64,7 @@ namespace mes_server.Services
 
         public async Task<(string token, string refreshToken)> LoginAsync(LoginDto loginDto)
         {
-            var user = await _userRepository.GetByUserNameAsync(loginDto.UserName);
+            var user = await _userRepository.GetByUserIDAsync(loginDto.UserID);
             if(user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
             {
                 throw new UnauthorizedAccessException("Invalid username or password.");
@@ -99,6 +99,11 @@ namespace mes_server.Services
 
         public async Task RegisterUserAsync(UserRegisterDto dto)
         {
+            if (await _userRepository.GetByUserIDAsync(dto.UserID) != null)
+            {
+                throw new InvalidOperationException("UserID already exists.");
+            }
+
             var user = new User
             {
                 UserID = dto.UserID,

@@ -1,4 +1,5 @@
 ﻿using mes_server.Models.DTOs.Tool;
+using mes_server.Models.History;
 using mes_server.Models.Production;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
@@ -13,10 +14,12 @@ namespace mes_server.Controllers
     {
         private readonly IToolService _toolService;
         private readonly IGenericService<Tool> _genericService;
-        public ToolController(IToolService toolService, IGenericService<Tool> genericService)
+        private readonly IGenericService<ToolHistory> _genericServiceHistory;
+        public ToolController(IToolService toolService, IGenericService<Tool> genericService, IGenericService<ToolHistory> genericServiceHistory)
         {
             _toolService = toolService;
             _genericService = genericService;
+            _genericServiceHistory = genericServiceHistory;
         }
 
         // 전체 공구 조회
@@ -44,6 +47,14 @@ namespace mes_server.Controllers
         {
             var tool = await _toolService.RegisterToolAsync(dto);
             return Ok(new { Message = "공구가 성공적으로 등록되었습니다.", data = tool });
+        }
+
+        // 전체 공구 조회
+        [HttpGet("history")]
+        public async Task<IActionResult> GetAllToolHistory()
+        {
+            var history = await _genericServiceHistory.GetAllAsync(); 
+            return Ok(history);
         }
 
         // 특정 공구의 사용 및 이력 조회
@@ -74,8 +85,8 @@ namespace mes_server.Controllers
         [HttpPost("{toolId}/use")]
         public async Task<IActionResult> UseTool([FromRoute] string toolId, [FromBody] ToolUsageDto toolUsageDto)
         {
-            await _toolService.UseToolAsync(toolId, toolUsageDto.Amount, toolUsageDto.ReasonCode);
-            return Ok(new { Message = "공구 사용량이 기록되었습니다." });
+            await _toolService.UseToolAsync(toolId, toolUsageDto.Amount);
+            return Ok(new { Message = "공구 사용" });
         }
     }
 }

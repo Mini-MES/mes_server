@@ -25,7 +25,7 @@ namespace mes_server.Services
             _toolHistoryRepository = toolHistoryRepository;
         }
 
-        public async Task ChangeToolStatusAsync(string toolId, ToolStatus newStatus, ReasonCode reasonCode)
+        public async Task ChangeToolStatusAsync(string toolId, ToolStatus newStatus, string reason)
         {
             var tool = await _toolRepository.GetByIdAsync(toolId);
             if (tool == null) throw new KeyNotFoundException("존재하지 않는 공구입니다.");
@@ -36,13 +36,13 @@ namespace mes_server.Services
                 ToolID = toolId,
                 ChangeDate = DateTime.Now,
                 BeforeCount = tool.CurrentUsageCount,
-                Reason = reasonCode,
+                Reason = reason,
             });
 
             await _context.SaveChangesAsync();
         }
 
-        public async Task UseToolAsync(string toolId, int usageAmount, ReasonCode reasonCode)
+        public async Task UseToolAsync(string toolId, int usageAmount)
         {
             var tool = await _toolRepository.GetByIdAsync(toolId);
             if (tool == null) throw new KeyNotFoundException("존재하지 않는 툴입니다.");
@@ -63,6 +63,7 @@ namespace mes_server.Services
                 ToolID = toolId,
                 ChangeDate = DateTime.Now,
                 BeforeCount = tool.CurrentUsageCount - usageAmount,
+                Reason = "",
             };
             await _toolHistoryRepository.CreateAsync(history);
 
@@ -93,8 +94,14 @@ namespace mes_server.Services
 
         public async Task<Tool> RegisterToolAsync(CreateToolDto dto)
         {
+            if(await _toolRepository.GetByIdAsync(dto.ToolName) != null)
+            {
+                throw new InvalidOperationException("이미 존재하는 공구입니다.");
+            }
+
             var tool = new Tool
             {
+                ToolID = dto.ToolID,
                 ToolName = dto.ToolName,
                 MaxUsageCount = dto.MaxUsageCount,
                 CurrentUsageCount = dto.CurrentUsageCount

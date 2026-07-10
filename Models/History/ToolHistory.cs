@@ -24,7 +24,8 @@ namespace mes_server.Models.History
         [Required]
         public int BeforeCount { get; set; }
 
+        [Required(AllowEmptyStrings = true)]
         [MaxLength(20)]
-        public ReasonCode Reason { get; set; }
+        public string? Reason { get; set; }
     }
 }

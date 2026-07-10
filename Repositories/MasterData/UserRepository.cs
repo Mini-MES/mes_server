@@ -21,5 +21,10 @@ namespace mes_server.Repositories.MasterData
         {
             return await Context.Users.SingleOrDefaultAsync(x => x.RefreshToken == refreshToken);
         }
+
+        public async Task<User?> GetByUserIDAsync(string userID)
+        {
+            return await Context.Users.FirstOrDefaultAsync(x => x.UserID == userID);
+        }
     }
 }

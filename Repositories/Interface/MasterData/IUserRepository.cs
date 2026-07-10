@@ -7,5 +7,6 @@ namespace mes_server.Repositories.Interface.MasterData
     {
         Task<User?> GetByUserNameAsync(string userName);
         Task<User?> GetByRefreshTokenAsync(string refreshToken);
+        Task<User?> GetByUserIDAsync(string userID);
     }
 }

@@ -5,6 +5,6 @@ namespace mes_server.Models.DTOs.Tool
     public class ToolStatusUpdateDto
     {
         public ToolStatus Status { get; set; }
-        public ReasonCode Reason { get; set; }
+        public string Reason { get; set; } = string.Empty;
     }
 }
