@@ -2,6 +2,8 @@ using mes_server.Models.DTOs.Production;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using mes_server.Repositories.Interface.Generic;
+using mes_server.Models.Production;
 
 namespace mes_server.Controllers
 {
@@ -11,10 +13,33 @@ namespace mes_server.Controllers
     public class ProductionController : ControllerBase
     {
         private readonly IProductionService _productionService;
+        private readonly IGenericRepository<WorkOrder> _workOrderRepository;
+        private readonly IGenericRepository<Lot> _lotRepository;
 
-        public ProductionController(IProductionService productionService)
+        public ProductionController(
+            IProductionService productionService,
+            IGenericRepository<WorkOrder> workOrderRepository,
+            IGenericRepository<Lot> lotRepository)
         {
             _productionService = productionService;
+            _workOrderRepository = workOrderRepository;
+            _lotRepository = lotRepository;
+        }
+
+        // 생산 지시 전체 조회
+        [HttpGet("orders")]
+        public async Task<IActionResult> GetWorkOrders()
+        {
+            var result = await _workOrderRepository.GetAllAsync();
+            return Ok(result.OrderByDescending(o => o.OrderID));
+        }
+
+        // LOT 전체 조회
+        [HttpGet("lots")]
+        public async Task<IActionResult> GetLots()
+        {
+            var result = await _lotRepository.GetAllAsync();
+            return Ok(result);
         }
 
         // 생산 지시 생성
