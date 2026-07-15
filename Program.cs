@@ -52,6 +52,17 @@ namespace mes_server
             builder.Services.AddScoped<IProductionService, ProductionService>();
             builder.Services.AddScoped<IUserService, UserService>();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll",
+                    policy =>
+                    {
+                        policy.AllowAnyOrigin()
+                              .AllowAnyMethod()
+                              .AllowAnyHeader();
+                    });
+            });
+
             builder.Services.AddControllers();
             builder.Services.AddSwaggerGen();
 
@@ -123,6 +134,7 @@ namespace mes_server
             var app = builder.Build();
 
             // 미들웨어 등록 (순서 중요)
+            app.UseCors("AllowAll");
             app.UseAuthentication();
             app.UseAuthorization();
 
