@@ -1,4 +1,4 @@
-# MES Domain Scenario & Data Flow Guide 🏭
+# MES Domain Scenario & Data Flow Guide 
 
 이 문서는 본 MES(생산실행시스템) 서버에서 비즈니스 로직이 어떻게 흘러가는지, 실제 제조업 공정의 라이프사이클에 맞춰 API 호출 흐름과 데이터의 변화를 설명합니다.
 

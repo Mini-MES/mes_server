@@ -1,4 +1,4 @@
-# API Standards & Auth Guide 🔑
+# API Standards & Auth Guide 
 
 이 문서는 프론트엔드 개발자 및 타 시스템과의 유기적인 협업을 위해 정의한 API 응답 표준, 공통 에러 핸들링, 그리고 JWT 인증 체계 가이드입니다.
 
@@ -34,7 +34,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-## 📤 공통 API 응답 규격 (Common Response Format)
+##  공통 API 응답 규격 (Common Response Format)
 
 본 프로젝트는 클라이언트가 응답을 일관되게 파싱할 수 있도록 공통 JSON 응답 포맷을 권장 및 구현하고 있습니다.
 

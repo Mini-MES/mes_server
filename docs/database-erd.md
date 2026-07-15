@@ -1,4 +1,4 @@
-# Database Schema & ERD (Entity Relationship Diagram) 🗄️
+# Database Schema & ERD (Entity Relationship Diagram) 
 
 이 문서는 본 MES 서버 프로젝트에서 데이터의 무결성과 추적성을 확보하기 위해 설계된 데이터베이스 모델 및 엔티티 간 연관 관계를 설명합니다.
 
