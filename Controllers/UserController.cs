@@ -27,7 +27,8 @@ namespace mes_server.Controllers
         {
             var (token, refreshToken) = await _userService.LoginAsync(dto);
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions { HttpOnly = true, Secure = true });
-            return Ok(new { Token = token });
+            Response.Cookies.Append("token", token, new CookieOptions { HttpOnly = true, Secure = true });
+            return Ok(new { Message = "로그인 성공" });
         }
 
         // 리프레쉬 토큰
