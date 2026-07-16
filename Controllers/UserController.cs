@@ -27,7 +27,26 @@ namespace mes_server.Controllers
         {
             var (token, refreshToken) = await _userService.LoginAsync(dto);
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions { HttpOnly = true, Secure = true });
-            return Ok(new { Token = token });
+            Response.Cookies.Append("token", token, new CookieOptions { HttpOnly = true, Secure = true });
+            return Ok(new { Message = "로그인 성공" });
+        }
+
+        [Authorize]
+        [HttpGet("check")]
+        public IActionResult CheckAuth()
+        {                                              
+            var name = User.Identity?.Name ?? "사용자";                                                                                                                                      
+            var id = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("nameid")?.Value ?? "";
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                       ?? User.FindFirst("role")?.Value ?? "Worker";
+
+            return Ok(new
+            {
+                Name = name,
+                Id = id,
+                Role = role
+            });
         }
 
         // 리프레쉬 토큰
@@ -38,7 +57,8 @@ namespace mes_server.Controllers
             if (string.IsNullOrEmpty(refreshToken)) return BadRequest("Token missing");
             var newTokens = await _userService.RefreshTokenAsync(refreshToken);
             Response.Cookies.Append("refreshToken", newTokens.refreshToken, new CookieOptions { HttpOnly = true, Secure = true });
-            return Ok(new { Token = newTokens.token });
+            Response.Cookies.Append("token", newTokens.token, new CookieOptions { HttpOnly = true, Secure = true });
+            return Ok(new { Message = "토큰이 성공적으로 갱신되었습니다." });
         }
 
         [Authorize(Roles = "Admin")]
