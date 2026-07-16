@@ -59,7 +59,8 @@ namespace mes_server
                     {
                         policy.WithOrigins("http://localhost:5173")
                               .AllowAnyMethod()
-                              .AllowAnyHeader();
+                              .AllowAnyHeader()
+                              .AllowCredentials();
                     });
             });
 
