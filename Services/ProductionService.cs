@@ -236,6 +236,12 @@ namespace mes_server.Services
             if (order == null || order.Status == OrderStatus.Completed)
                 throw new InvalidOperationException("진행 불가능한 생산지시입니다.");
 
+            var isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(order.ProductID, order.TargetQty);
+            if (!isAvailable)
+            {
+                throw new InvalidOperationException($"생산에 필요한 원자재 재고가 부족하여 생산을 시작할 수 없습니다. (계획 수량: {order.TargetQty} EA)");
+            }
+
             var lots = await _lotRepository.FindAsync(l => l.OrderID == orderId);
             var lot = lots.FirstOrDefault();
             if (lot == null)
