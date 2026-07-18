@@ -111,7 +111,8 @@ namespace mes_server.Services
                 WorkOrderID = workOrderId,
                 Quantity = quantity,
                 Destination = destination,
-                ShipmentDate = DateTime.Now
+                ShipmentDate = DateTime.Now,
+                Product = product.ProductName
             };
 
             await _shipmentRepository.CreateAsync(shipment);
