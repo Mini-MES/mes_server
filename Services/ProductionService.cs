@@ -67,6 +67,21 @@ namespace mes_server.Services
             var order = await _workOrderRepository.GetByIdAsync(orderId);
             if (order != null)
             {
+                if (order.TotalGoodQty < order.TargetQty)
+                {
+                    throw new InvalidOperationException($"목표 생산 수량({order.TargetQty} EA) 미달 건은 생산 완료 처리할 수 없습니다. (현재: {order.TotalGoodQty} EA)");
+                }
+
+                var lots = await _lotRepository.FindAsync(l => l.OrderID == orderId);
+                foreach (var lot in lots)
+                {
+                    if (lot.Status == LotStatus.HOLD)
+                    {
+                        throw new InvalidOperationException($"LOT ID ({lot.LotID})가 보류(HOLD) 상태입니다. 불량 보류 처리 해제 후 최종 마감할 수 있습니다.");
+                    }
+                    lot.Status = LotStatus.DONE;
+                }
+
                 order.Status = OrderStatus.Completed;
                 await _context.SaveChangesAsync();
             }
