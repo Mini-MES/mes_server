@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Models.Production;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace mes_server.Controllers
 {
@@ -125,6 +126,7 @@ namespace mes_server.Controllers
         }
 
         // Lot 보류 해제
+        [Authorize(Roles = "Admin")]
         [HttpPut("lot/{lotId}/unhold")]
         public async Task<IActionResult> UnholdLot([FromRoute] string lotId)
         {
