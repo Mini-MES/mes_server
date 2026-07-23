@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Models.Production;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace mes_server.Controllers
 {
@@ -122,6 +123,15 @@ namespace mes_server.Controllers
         {
             var result = await _productionService.GetLotStatusAsync(lotId);
             return Ok(new { Message = "Lot 상태가 성공적으로 조회되었습니다.", data = result });
+        }
+
+        // Lot 보류 해제
+        [Authorize(Roles = "Admin")]
+        [HttpPut("lot/{lotId}/unhold")]
+        public async Task<IActionResult> UnholdLot([FromRoute] string lotId)
+        {
+            await _productionService.UnholdLotAsync(lotId);
+            return Ok(new { Message = "Lot 보류가 해제되었습니다." });
         }
     }
 }
