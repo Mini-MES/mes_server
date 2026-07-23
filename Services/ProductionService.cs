@@ -364,5 +364,21 @@ namespace mes_server.Services
                 LotID = lotId
             };
         }
+
+        public async Task UnholdLotAsync(string lotId)
+        {
+            var lot = await _lotRepository.GetByIdAsync(lotId);
+            if (lot == null)
+            {
+                throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
+            }
+            if (lot.Status != LotStatus.HOLD)
+            {
+                throw new InvalidOperationException("보류(HOLD) 상태인 Lot만 보류 해제할 수 있습니다.");
+            }
+
+            lot.Status = LotStatus.WIP;
+            await _context.SaveChangesAsync();
+        }
     }
 }

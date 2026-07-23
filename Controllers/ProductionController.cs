@@ -123,5 +123,13 @@ namespace mes_server.Controllers
             var result = await _productionService.GetLotStatusAsync(lotId);
             return Ok(new { Message = "Lot 상태가 성공적으로 조회되었습니다.", data = result });
         }
+
+        // Lot 보류 해제
+        [HttpPut("lot/{lotId}/unhold")]
+        public async Task<IActionResult> UnholdLot([FromRoute] string lotId)
+        {
+            await _productionService.UnholdLotAsync(lotId);
+            return Ok(new { Message = "Lot 보류가 해제되었습니다." });
+        }
     }
 }

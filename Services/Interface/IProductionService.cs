@@ -17,5 +17,6 @@ namespace mes_server.Services.Interface
         Task DeleteWorkOrderAsync(int orderId);
         Task<Lot> GetLotStatusAsync(string lotId);
         Task<WorkOrderResponseDto?> GetWorkOrderByIdAsync(int orderId);
+        Task UnholdLotAsync(string lotId);
     }
 }
