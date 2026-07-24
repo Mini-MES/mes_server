@@ -4,7 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Models.Production;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
+using mes_server.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace mes_server.Controllers
 {
@@ -16,15 +17,18 @@ namespace mes_server.Controllers
         private readonly IProductionService _productionService;
         private readonly IGenericRepository<WorkOrder> _workOrderRepository;
         private readonly IGenericRepository<Lot> _lotRepository;
+        private readonly IHubContext<MesHub> _hubContext;
 
         public ProductionController(
             IProductionService productionService,
             IGenericRepository<WorkOrder> workOrderRepository,
-            IGenericRepository<Lot> lotRepository)
+            IGenericRepository<Lot> lotRepository,
+            IHubContext<MesHub> hubContext)
         {
             _productionService = productionService;
             _workOrderRepository = workOrderRepository;
             _lotRepository = lotRepository;
+            _hubContext = hubContext;
         }
 
         // 생산 지시 전체 조회
@@ -48,6 +52,8 @@ namespace mes_server.Controllers
         public async Task<IActionResult> CreateWorkOrder([FromBody] WorkOrderCreateDto createDto)
         {
             var result = await _productionService.CreateWorkOrderAsync(createDto);
+            await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { orderId = result.OrderID });
+
             return Ok(new { Message = "생산 지시가 성공적으로 생성되었습니다.", data = result });
         }
 
@@ -105,6 +111,8 @@ namespace mes_server.Controllers
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
             await _productionService.MoveProcessAsync(perfDto, nextProcessId, userId);
+
+            await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId = perfDto.LotID, nextProcessId });
             return Ok(new { Message = "공정 이동이 성공적으로 완료되었습니다." });
         }
 
@@ -114,6 +122,32 @@ namespace mes_server.Controllers
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
             var result = await _productionService.RegisterPerformanceAsync(registerDto, userId);
+
+            if (registerDto.BadQty > 0)
+            {                                                                           
+                await _hubContext.Clients.All.SendAsync("DefectReported", new
+                {
+                    lotId = registerDto.LotID,
+                    workOrderId = registerDto.WorkOrderID,
+                    processId = registerDto.ProcessID,
+                    badQty = registerDto.BadQty,
+                    reasonCode = registerDto.ReasonCode?.ToString(),                                                                                        
+                    reportedBy = userId,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+
+            await _hubContext.Clients.All.SendAsync("LotUpdated", new
+            {
+                lotId = registerDto.LotID,
+                workOrderId = registerDto.WorkOrderID,
+                processId = registerDto.ProcessID,
+                goodQty = registerDto.GoodQty,
+                badQty = registerDto.BadQty,
+                timestamp = DateTime.UtcNow
+            });
+
+            await _hubContext.Clients.All.SendAsync("PerformanceRegistered", new { lotId = registerDto.LotID, data = result });
             return Ok(new { Message = "실적이 성공적으로 등록되었습니다.", data = result });
         }
 
@@ -131,6 +165,8 @@ namespace mes_server.Controllers
         public async Task<IActionResult> UnholdLot([FromRoute] string lotId)
         {
             await _productionService.UnholdLotAsync(lotId);
+
+            await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId });
             return Ok(new { Message = "Lot 보류가 해제되었습니다." });
         }
     }
