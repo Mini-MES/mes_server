@@ -1,3 +1,4 @@
+using mes_server.Hubs;
 using mes_server.Models.DTOs.Inventory;
 using mes_server.Models.History;
 using mes_server.Services.Interface;
