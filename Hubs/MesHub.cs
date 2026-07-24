@@ -16,14 +16,22 @@ namespace mes_server.Hubs
         // SignalR 클라이언트 접속 시 호출되는 메서드
         public override async Task OnConnectedAsync()
         {
-            _logger.LogInformation($"🟢 SignalR 클라이언트 접속됨: ConnectionId={Context.ConnectionId}");
+            _logger.LogInformation("🟢 SignalR 클라이언트 접속됨: ConnectionId={ConnectionId}", Context.ConnectionId);
             await base.OnConnectedAsync();
         }
 
         // SignalR 클라이언트 접속 해제 시 호출되는 메서드
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            _logger.LogInformation($"🔴 SignalR 클라이언트 접속 해제됨: ConnectionId={Context.ConnectionId}");
+            if (exception != null)
+            {
+                _logger.LogWarning(exception, "🔴 SignalR 클라이언트 접속 해제됨 (예외 발생): ConnectionId={ConnectionId}", Context.ConnectionId);
+            }
+            else
+            {
+                _logger.LogInformation("🔴 SignalR 클라이언트 정상 접속 해제됨: ConnectionId={ConnectionId}", Context.ConnectionId);
+            }
+
             await base.OnDisconnectedAsync(exception);
         }
     }
