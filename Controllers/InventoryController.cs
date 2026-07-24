@@ -1,9 +1,9 @@
 using mes_server.Models.DTOs.Inventory;
 using mes_server.Models.History;
-using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace mes_server.Controllers
 {
@@ -13,14 +13,17 @@ namespace mes_server.Controllers
     public class InventoryController : ControllerBase
     {
         private readonly IInventoryService _inventoryService;           
-        private readonly IGenericService<Shipment> _shipmentService;    
+        private readonly IGenericService<Shipment> _shipmentService; 
+        private readonly IHubContext<MesHub> _hubContext;
 
         public InventoryController(
             IInventoryService inventoryService,
-            IGenericService<Shipment> shipmentService)
+            IGenericService<Shipment> shipmentService,
+            IHubContext<MesHub> hubContext)
         {
             _inventoryService = inventoryService;
             _shipmentService = shipmentService;
+            _hubContext = hubContext;
         }
 
         // --- 1. 비즈니스 로직 (InventoryService 활용) ---
@@ -29,6 +32,8 @@ namespace mes_server.Controllers
         public async Task<IActionResult> UpdateStock([FromRoute] string materialId, [FromBody] StockUpdateDto dto)
         {
             await _inventoryService.UpdateStockAsync(materialId, dto);
+
+            await _hubContext.Clients.All.SendAsync("StockUpdated", new { MaterialId = materialId, NewStockQty = dto.StockQty });
             return Ok(new { Message = "재고가 업데이트되었습니다." });
         }
 
@@ -59,6 +64,8 @@ namespace mes_server.Controllers
             await _inventoryService.ShipFinishedProductAsync(
                 dto.ProductID, dto.WorkOrderID, dto.Quantity, dto.Destination
             );
+
+            await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { ProductId = dto.ProductID });
             return Ok(new { Message = "완제품 출하가 완료되었습니다." });
         }
     }
