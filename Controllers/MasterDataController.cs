@@ -1,9 +1,11 @@
+using mes_server.Hubs;
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace mes_server.Controllers
 {
@@ -16,17 +18,23 @@ namespace mes_server.Controllers
         private readonly IGenericService<BadReasonMaster> _badReasonService;
         private readonly IGenericService<BOM> _bomService;
         private readonly IGenericService<ProductMaster> _productService;
+        private readonly IHubContext<MesHub> _hubContext;
+        private readonly ILogger<MasterDataController> _logger;
 
         public MasterDataController(
             IMasterDataService masterDataService,
             IGenericService<BadReasonMaster> badReasonService,
             IGenericService<BOM> bomService,
-            IGenericService<ProductMaster> productService)
+            IGenericService<ProductMaster> productService,
+            IHubContext<MesHub> hubContext,
+            ILogger<MasterDataController> logger)
         {
             _masterDataService = masterDataService;
             _badReasonService = badReasonService;
             _bomService = bomService;
             _productService = productService;
+            _hubContext = hubContext;
+            _logger = logger;
         }
 
         // 공정 관련 
@@ -130,6 +138,16 @@ namespace mes_server.Controllers
         public async Task<IActionResult> CreateProduct([FromBody] ProductCreateDto createDto)
         {
             var product = await _masterDataService.CreateProductAsync(createDto);
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("ProductCreated", new { Message = "새로운 제품이 생성되었습니다.", data = product });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SignalR ProductCreated 방송 실패 (DB 처리 정상)");
+            }
+
             return Ok(new { Message = "제품이 성공적으로 생성되었습니다.", data = product });
         }
 

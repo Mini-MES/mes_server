@@ -9,6 +9,7 @@ using mes_server.Repositories.Interface.Production;
 using mes_server.Repositories.MasterData;
 using mes_server.Repositories.Production;
 using mes_server.Services;
+using mes_server.Hubs;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -66,6 +67,7 @@ namespace mes_server
 
             builder.Services.AddControllers();
             builder.Services.AddSwaggerGen();
+            builder.Services.AddSignalR();
 
 
             // 4. 인증 관련
@@ -156,6 +158,7 @@ namespace mes_server
                 app.UseSwaggerUI();
             }
 
+            app.MapHub<MesHub>("/hubs/mes");
             app.MapControllers();
 
             app.Run();
