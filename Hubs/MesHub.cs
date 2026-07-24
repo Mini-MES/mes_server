@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 
 namespace mes_server.Hubs
 {
+    [Authorize] 
     public class MesHub : Hub
     {
         private readonly ILogger<MesHub> _logger;

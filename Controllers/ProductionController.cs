@@ -18,17 +18,20 @@ namespace mes_server.Controllers
         private readonly IGenericRepository<WorkOrder> _workOrderRepository;
         private readonly IGenericRepository<Lot> _lotRepository;
         private readonly IHubContext<MesHub> _hubContext;
+        private readonly ILogger<ProductionController> _logger;
 
         public ProductionController(
             IProductionService productionService,
             IGenericRepository<WorkOrder> workOrderRepository,
             IGenericRepository<Lot> lotRepository,
-            IHubContext<MesHub> hubContext)
+            IHubContext<MesHub> hubContext,
+            ILogger<ProductionController> logger)
         {
             _productionService = productionService;
             _workOrderRepository = workOrderRepository;
             _lotRepository = lotRepository;
             _hubContext = hubContext;
+            _logger = logger;
         }
 
         // 생산 지시 전체 조회
@@ -52,7 +55,15 @@ namespace mes_server.Controllers
         public async Task<IActionResult> CreateWorkOrder([FromBody] WorkOrderCreateDto createDto)
         {
             var result = await _productionService.CreateWorkOrderAsync(createDto);
-            await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { orderId = result.OrderID });
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { orderId = result.OrderID });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SignalR WorkOrderUpdated 방송 실패 (DB 등록은 정상)");
+            }
 
             return Ok(new { Message = "생산 지시가 성공적으로 생성되었습니다.", data = result });
         }
@@ -112,7 +123,15 @@ namespace mes_server.Controllers
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
             await _productionService.MoveProcessAsync(perfDto, nextProcessId, userId);
 
-            await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId = perfDto.LotID, nextProcessId });
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId = perfDto.LotID, nextProcessId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SignalR LotUpdated 방송 실패 (DB 이동은 정상)");
+            }
+
             return Ok(new { Message = "공정 이동이 성공적으로 완료되었습니다." });
         }
 
@@ -123,31 +142,39 @@ namespace mes_server.Controllers
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
             var result = await _productionService.RegisterPerformanceAsync(registerDto, userId);
 
-            if (registerDto.BadQty > 0)
-            {                                                                           
-                await _hubContext.Clients.All.SendAsync("DefectReported", new
+            try
+            {
+                if (registerDto.BadQty > 0)
+                {
+                    await _hubContext.Clients.All.SendAsync("DefectReported", new
+                    {
+                        lotId = registerDto.LotID,
+                        workOrderId = registerDto.WorkOrderID,
+                        processId = registerDto.ProcessID,
+                        badQty = registerDto.BadQty,
+                        reasonCode = registerDto.ReasonCode?.ToString(),
+                        reportedBy = userId,
+                        timestamp = DateTime.UtcNow
+                    });
+                }
+
+                await _hubContext.Clients.All.SendAsync("LotUpdated", new
                 {
                     lotId = registerDto.LotID,
                     workOrderId = registerDto.WorkOrderID,
                     processId = registerDto.ProcessID,
+                    goodQty = registerDto.GoodQty,
                     badQty = registerDto.BadQty,
-                    reasonCode = registerDto.ReasonCode?.ToString(),                                                                                        
-                    reportedBy = userId,
                     timestamp = DateTime.UtcNow
                 });
+
+                await _hubContext.Clients.All.SendAsync("PerformanceRegistered", new { lotId = registerDto.LotID, data = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SignalR 실적등록 이벤트 방송 실패 (DB 처리는 정상)");
             }
 
-            await _hubContext.Clients.All.SendAsync("LotUpdated", new
-            {
-                lotId = registerDto.LotID,
-                workOrderId = registerDto.WorkOrderID,
-                processId = registerDto.ProcessID,
-                goodQty = registerDto.GoodQty,
-                badQty = registerDto.BadQty,
-                timestamp = DateTime.UtcNow
-            });
-
-            await _hubContext.Clients.All.SendAsync("PerformanceRegistered", new { lotId = registerDto.LotID, data = result });
             return Ok(new { Message = "실적이 성공적으로 등록되었습니다.", data = result });
         }
 
@@ -166,7 +193,15 @@ namespace mes_server.Controllers
         {
             await _productionService.UnholdLotAsync(lotId);
 
-            await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId });
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SignalR UnholdLot 방송 실패 (DB 해제는 정상)");
+            }
+
             return Ok(new { Message = "Lot 보류가 해제되었습니다." });
         }
     }

@@ -16,15 +16,18 @@ namespace mes_server.Controllers
         private readonly IInventoryService _inventoryService;           
         private readonly IGenericService<Shipment> _shipmentService; 
         private readonly IHubContext<MesHub> _hubContext;
+        private readonly ILogger<InventoryController> _logger;
 
         public InventoryController(
             IInventoryService inventoryService,
             IGenericService<Shipment> shipmentService,
-            IHubContext<MesHub> hubContext)
+            IHubContext<MesHub> hubContext,
+            ILogger<InventoryController> logger)
         {
             _inventoryService = inventoryService;
             _shipmentService = shipmentService;
             _hubContext = hubContext;
+            _logger = logger;
         }
 
         // --- 1. 비즈니스 로직 (InventoryService 활용) ---
@@ -34,7 +37,15 @@ namespace mes_server.Controllers
         {
             await _inventoryService.UpdateStockAsync(materialId, dto);
 
-            await _hubContext.Clients.All.SendAsync("StockUpdated", new { MaterialId = materialId, NewStockQty = dto.StockQty });
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("StockUpdated", new { MaterialId = materialId, NewStockQty = dto.StockQty });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SignalR StockUpdated 방송 실패 (DB 처리 정상)");
+            }
+
             return Ok(new { Message = "재고가 업데이트되었습니다." });
         }
 
@@ -66,7 +77,15 @@ namespace mes_server.Controllers
                 dto.ProductID, dto.WorkOrderID, dto.Quantity, dto.Destination
             );
 
-            await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { ProductId = dto.ProductID });
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { WorkOrderId = dto.WorkOrderID, ProductId = dto.ProductID });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SignalR WorkOrderUpdated 방송 실패 (DB 출하 처리 정상)");
+            }
+
             return Ok(new { Message = "완제품 출하가 완료되었습니다." });
         }
     }
