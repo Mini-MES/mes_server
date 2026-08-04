@@ -17,6 +17,9 @@ namespace mes_server.Data
         public DbSet<ProductMaster> ProductMasters { get; set; }
         public DbSet<BadReasonMaster> BadReasonMasters { get; set; }
         public DbSet<BOM> BOMs { get; set; }
+        public DbSet<Equipment> Equipments { get; set; }
+        public DbSet<DowntimeReasonMaster> DowntimeReasonMasters { get; set; }
+        public DbSet<DowntimeLog> DowntimeLogs { get; set; }
 
         // Production
         public DbSet<WorkOrder> WorkOrders { get; set; }
@@ -127,6 +130,25 @@ namespace mes_server.Data
                 .HasOne<ProductMaster>()
                 .WithMany()
                 .HasForeignKey(s => s.ProductID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DowntimeLog>()
+                    .HasOne(d => d.Equipment)
+                    .WithMany()
+                    .HasForeignKey(d => d.EquipmentID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+            // DowntimeLog 관계 설정
+            modelBuilder.Entity<DowntimeLog>()
+                .HasOne(d => d.DowntimeReason)
+                .WithMany()
+                .HasForeignKey(d => d.ReasonCode)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DowntimeLog>()
+                .HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);

@@ -9,7 +9,7 @@ namespace mes_server.Models.MasterData
         public int DowntimeLogID { get; set; }
 
         [Required]
-        [MaxLength(20)]
+        [MaxLength(50)]
         public string EquipmentID { get; set; } = null!;
 
         [Required]
@@ -24,7 +24,6 @@ namespace mes_server.Models.MasterData
 
         public string? OperatorMemo { get; set; } // 작업자 메모                                                                                                                                   
 
-        [MaxLength(50)]
         public string? UserID { get; set; } // 등록한 작업자 ID                                                                                                                                    
                                                                                                                                 
         [ForeignKey("EquipmentID")]
