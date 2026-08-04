@@ -39,7 +39,7 @@ namespace mes_server.Controllers
             return Ok(new { Message = "설비 상태가 성공적으로 변경되었습니다." });
         }
 
-        [HttpPost("downtime-reason")]
+        [HttpGet("downtime-reasons")]
         public async Task<IActionResult> GetDowntimeReasons()
         {
             var result = await _equipmentService.GetDowntimeReasonsAsync();

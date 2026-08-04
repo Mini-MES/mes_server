@@ -52,6 +52,8 @@ namespace mes_server
             builder.Services.AddScoped<IInventoryService, InventoryService>();
             builder.Services.AddScoped<IProductionService, ProductionService>();
             builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IEquipmentService, EquipmentService>();
+            builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>
             {

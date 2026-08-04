@@ -1,4 +1,4 @@
-﻿using mes_server.Data;
+using mes_server.Data;
 using mes_server.Hubs;
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
@@ -35,8 +35,12 @@ namespace mes_server.Services
 
             if (oldStatus == newStatus) return true;
 
-            // 비가동(STOPPED / ERROR) 전환 시 ➔ 새로운 비가동 로그 생성                                                                                                                        
-            if (newStatus == EquipmentStatus.Stopped || newStatus == EquipmentStatus.Error)
+            // RUNNING이 아니면 전부 비가동(Downtime) 상태로 간주
+            bool isOldDowntime = oldStatus != EquipmentStatus.Running;
+            bool isNewDowntime = newStatus != EquipmentStatus.Running;
+
+            // (가동) ➔ (비가동) 으로 전환될 때만 1회 새로운 DowntimeLog 생성
+            if (!isOldDowntime && isNewDowntime)
             {
                 var downtimeLog = new DowntimeLog
                 {
@@ -46,8 +50,8 @@ namespace mes_server.Services
                 _context.DowntimeLogs.Add(downtimeLog);
             }
 
-            // 비가동 ➔ 가동(RUNNING) 전환 시 ➔ 열려있는 비가동 로그 마감 및 지속시간(초) 자동 계산                                                                                             
-            if ((oldStatus == EquipmentStatus.Stopped || oldStatus == EquipmentStatus.Error) && newStatus == EquipmentStatus.Running)
+            // (비가동) ➔ (가동 RUNNING) 으로 전환될 때만 열려있는 DowntimeLog 마감
+            if (isOldDowntime && !isNewDowntime)
             {
                 var openLog = await _context.DowntimeLogs
                     .Where(d => d.EquipmentID == equipment.EquipmentID && d.EndedAt == null)
@@ -73,16 +77,23 @@ namespace mes_server.Services
 
             await _context.SaveChangesAsync();
 
-            await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new EquipmentDto
+            try
             {
-                EquipmentID = equipment.EquipmentID,
-                EquipmentName = equipment.Name,
-                Status = equipment.Status,
-                CurrentLotID = equipment.CurrentLotId,
-                TotalRunningSeconds = equipment.TotalRunningSeconds,
-                TotalDowntimeSeconds = equipment.TotalDowntimeSeconds,
-                LastStatusChangedAt = equipment.LastStatusChangedAt
-            });
+                await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new EquipmentDto
+                {
+                    EquipmentID = equipment.EquipmentID,
+                    EquipmentName = equipment.Name,
+                    Status = equipment.Status,
+                    CurrentLotID = equipment.CurrentLotId,
+                    TotalRunningSeconds = equipment.TotalRunningSeconds,
+                    TotalDowntimeSeconds = equipment.TotalDowntimeSeconds,
+                    LastStatusChangedAt = equipment.LastStatusChangedAt
+                });
+            }
+            catch
+            {
+                
+            }
 
             return true;
         }
@@ -114,7 +125,7 @@ namespace mes_server.Services
 
         public async Task<IEnumerable<DowntimeReasonDto>> GetDowntimeReasonsAsync()
         {
-            var reasons = await _downtimeReasonRepository.GetAllAsync();
+            var reasons = await _downtimeReasonRepository.FindAsync(r => r.IsActive);
             return reasons.Select(r => new DowntimeReasonDto
             {
                 ReasonCode = r.ReasonCode,
