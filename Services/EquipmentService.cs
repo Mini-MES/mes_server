@@ -1,8 +1,10 @@
 ﻿using mes_server.Data;
+using mes_server.Hubs;
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Services.Interface;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace mes_server.Services
@@ -12,12 +14,14 @@ namespace mes_server.Services
         private readonly IGenericRepository<Equipment> _equipmentRepository;
         private readonly IGenericRepository<DowntimeReasonMaster> _downtimeReasonRepository;
         private readonly MESDbContext _context;
+        private readonly IHubContext<MesHub> _hubContext;
 
-        public EquipmentService(IGenericRepository<Equipment> equipmentRepository, IGenericRepository<DowntimeReasonMaster> downtimeReasonRepository, MESDbContext context)
+        public EquipmentService(IGenericRepository<Equipment> equipmentRepository, IGenericRepository<DowntimeReasonMaster> downtimeReasonRepository, MESDbContext context, IHubContext<MesHub> hubContext)
         {
             _equipmentRepository = equipmentRepository;
             _downtimeReasonRepository = downtimeReasonRepository;
             _context = context;
+            _hubContext = hubContext;
         }
 
         public async Task<bool> ChangeEquipmentStatusAsync(ChangeEquipmentStatusRequest request)
@@ -68,6 +72,18 @@ namespace mes_server.Services
             equipment.LastStatusChangedAt = now;
 
             await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new EquipmentDto
+            {
+                EquipmentID = equipment.EquipmentID,
+                EquipmentName = equipment.Name,
+                Status = equipment.Status,
+                CurrentLotID = equipment.CurrentLotId,
+                TotalRunningSeconds = equipment.TotalRunningSeconds,
+                TotalDowntimeSeconds = equipment.TotalDowntimeSeconds,
+                LastStatusChangedAt = equipment.LastStatusChangedAt
+            });
+
             return true;
         }
 
