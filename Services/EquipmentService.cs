@@ -1,0 +1,143 @@
+﻿using mes_server.Data;
+using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.MasterData;
+using mes_server.Repositories.Interface.Generic;
+using mes_server.Services.Interface;
+using Microsoft.EntityFrameworkCore;
+
+namespace mes_server.Services
+{
+    public class EquipmentService : IEquipmentService
+    {
+        private readonly IGenericRepository<Equipment> _equipmentRepository;
+        private readonly IGenericRepository<DowntimeReasonMaster> _downtimeReasonRepository;
+        private readonly MESDbContext _context;
+
+        public EquipmentService(IGenericRepository<Equipment> equipmentRepository, IGenericRepository<DowntimeReasonMaster> downtimeReasonRepository, MESDbContext context)
+        {
+            _equipmentRepository = equipmentRepository;
+            _downtimeReasonRepository = downtimeReasonRepository;
+            _context = context;
+        }
+
+        public async Task<bool> ChangeEquipmentStatusAsync(ChangeEquipmentStatusRequest request)
+        {
+            var equipment = await _equipmentRepository.GetByIdAsync(request.EquipmentID);
+            if (equipment == null) return false;
+
+            var oldStatus = equipment.Status;
+            var newStatus = request.NewStatus;
+            var now = DateTime.UtcNow;
+
+            if (oldStatus == newStatus) return true;
+
+            // 비가동(STOPPED / ERROR) 전환 시 ➔ 새로운 비가동 로그 생성                                                                                                                        
+            if (newStatus == EquipmentStatus.Stopped || newStatus == EquipmentStatus.Error)
+            {
+                var downtimeLog = new DowntimeLog
+                {
+                    EquipmentID = equipment.EquipmentID,
+                    StartedAt = now
+                };
+                _context.DowntimeLogs.Add(downtimeLog);
+            }
+
+            // 비가동 ➔ 가동(RUNNING) 전환 시 ➔ 열려있는 비가동 로그 마감 및 지속시간(초) 자동 계산                                                                                             
+            if ((oldStatus == EquipmentStatus.Stopped || oldStatus == EquipmentStatus.Error) && newStatus == EquipmentStatus.Running)
+            {
+                var openLog = await _context.DowntimeLogs
+                    .Where(d => d.EquipmentID == equipment.EquipmentID && d.EndedAt == null)
+                    .OrderByDescending(d => d.StartedAt)
+                    .FirstOrDefaultAsync();
+
+                if (openLog != null)
+                {
+                    openLog.EndedAt = now;
+                    var durationSec = (int)(now - openLog.StartedAt).TotalSeconds;
+                    openLog.DurationSeconds = durationSec;
+
+                    equipment.TotalDowntimeSeconds += durationSec;
+                }
+            }
+
+            equipment.Status = newStatus;
+            if (!string.IsNullOrEmpty(request.CurrentLotID))
+            {
+                equipment.CurrentLotId = request.CurrentLotID;
+            }
+            equipment.LastStatusChangedAt = now;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<IEnumerable<EquipmentDto>> GetAllEquipmentAsync()
+        {
+            var list = await _equipmentRepository.GetAllAsync();
+            return list.Select(e => new EquipmentDto
+            {
+                EquipmentID = e.EquipmentID,
+                EquipmentName = e.Name,
+                Status = e.Status,
+                CurrentLotID = e.CurrentLotId,
+                TotalRunningSeconds = e.TotalRunningSeconds,
+                TotalDowntimeSeconds = e.TotalDowntimeSeconds,
+                LastStatusChangedAt = e.LastStatusChangedAt
+            });
+        }
+
+        public async Task<IEnumerable<DowntimeLog>> GetDowntimeLogsByEquipmentAsync(string equipmentId)
+        {
+            return await _context.DowntimeLogs
+                .Include(dl => dl.DowntimeReason)
+                .Include(dl => dl.User)
+                .Where(dl => dl.EquipmentID == equipmentId)
+                .OrderByDescending(dl => dl.StartedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<DowntimeReasonDto>> GetDowntimeReasonsAsync()
+        {
+            var reasons = await _downtimeReasonRepository.GetAllAsync();
+            return reasons.Select(r => new DowntimeReasonDto
+            {
+                ReasonCode = r.ReasonCode,
+                ReasonName = r.ReasonName,
+                Category = r.Category
+            });
+        }
+
+        public async Task<EquipmentDto?> GetEquipmentByIdAsync(string equipmentId)
+        {
+            var equipment = await _equipmentRepository.GetByIdAsync(equipmentId);
+            if (equipment == null)
+            {
+                throw new Exception($"Equipment with ID {equipmentId} not found.");
+            }
+
+            return new EquipmentDto
+            {
+                EquipmentID = equipment.EquipmentID,
+                EquipmentName = equipment.Name,
+                Status = equipment.Status,
+                CurrentLotID = equipment.CurrentLotId,
+                TotalRunningSeconds = equipment.TotalRunningSeconds,
+                TotalDowntimeSeconds = equipment.TotalDowntimeSeconds,
+                LastStatusChangedAt = equipment.LastStatusChangedAt,
+            };
+        }
+
+        public async Task<bool> RegisterDowntimeReasonAsync(RegisterDowntimeReasonRequest request)
+        {
+            var logs = await _context.DowntimeLogs.FindAsync(request.DowntimeLogID);
+            if(logs == null) return false;
+
+            logs.ReasonCode = request.ReasonCode;
+            logs.OperatorMemo = request.OperatorMemo;
+            logs.UserID = request.UserID;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+    }
+}
