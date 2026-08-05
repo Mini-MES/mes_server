@@ -9,6 +9,7 @@ namespace mes_server.Services.Interface
             Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty);
 
             Task ReceiveFinishedProductAsync(int workOrderId, int productionQty);
+            Task ReceiveSemiFinishedProductAsync(int workOrderId, int processId, int productionQty);
             Task<IEnumerable<ProductMaster>> GetLowStockMaterialsAsync();
 
             Task<bool> CheckMaterialAvailabilityAsync(string productId, int targetQty);

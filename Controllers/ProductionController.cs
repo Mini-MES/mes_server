@@ -72,8 +72,19 @@ namespace mes_server.Controllers
         [HttpPost("start/{orderId}")]
         public async Task<IActionResult> StartProduction([FromRoute] int orderId)
         {
-            var result = await _productionService.StartProductionAsync(orderId);
-            return Ok(new { Message = "생산이 성공적으로 시작되었습니다.", data = result });
+            try
+            {
+                var result = await _productionService.StartProductionAsync(orderId);
+                return Ok(new { Message = "생산이 성공적으로 시작되었습니다.", data = result });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = ex.Message });
+            }
         }
 
         // 생산 상태 조회

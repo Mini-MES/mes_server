@@ -1,5 +1,6 @@
 using mes_server.Data;
 using mes_server.Models.DTOs.Inventory;
+using mes_server.Models.Enum;
 using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Models.Production;
@@ -47,15 +48,12 @@ namespace mes_server.Services
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
             if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
             
-            var boms = await _bomRepository.FindAsync(b => b.ProductID == workOrder.ProductID && b.ProcessID == processId);
+            var boms = await _bomRepository.FindAsync(b => b.ProcessID == processId || (b.ProductID == workOrder.ProductID && b.ProcessID == processId));
 
             foreach (var bom in boms)
             {
                 var product = await _productRepository.GetByIdAsync(bom.ChildProductID);
-                if (product == null) throw new KeyNotFoundException($"품목을 찾을 수 없음: {bom.ChildProductID}");
-
-                if (product.StockQty < (bom.RequiredQty * productionQty))
-                    throw new InvalidOperationException($"재고 부족: {bom.ChildProductID}");
+                if (product == null) continue;
 
                 product.StockQty -= (bom.RequiredQty * productionQty);
             }
@@ -75,6 +73,31 @@ namespace mes_server.Services
             await _context.SaveChangesAsync();
         }
 
+        public async Task ReceiveSemiFinishedProductAsync(int workOrderId, int processId, int productionQty)
+        {
+            var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
+            if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
+
+            var boms = await _bomRepository.FindAsync(b => b.ProcessID == processId);
+            var currentBom = boms.FirstOrDefault();
+
+            if (currentBom != null)
+            {
+                var outputProduct = await _productRepository.GetByIdAsync(currentBom.ProductID);
+                if (outputProduct != null)
+                {
+                    outputProduct.StockQty += productionQty;
+                }
+            }
+            else
+            {
+                await ReceiveFinishedProductAsync(workOrderId, productionQty);
+                return;
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<IEnumerable<ProductMaster>> GetLowStockMaterialsAsync()
         {
             var products = await _productRepository.GetAllAsync();
@@ -83,14 +106,60 @@ namespace mes_server.Services
 
         public async Task<bool> CheckMaterialAvailabilityAsync(string productId, int targetQty)
         {
+            var leafMaterials = await GetLeafRawMaterialsAsync(productId);
+
+            if (leafMaterials.Any())
+            {
+                foreach (var (materialId, requiredQty) in leafMaterials)
+                {
+                    var material = await _productRepository.GetByIdAsync(materialId);
+                    if (material != null && material.StockQty < (requiredQty * targetQty))
+                        return false;
+                }
+                return true;
+            }
+
             var boms = await _bomRepository.FindAsync(b => b.ProductID == productId);
             foreach (var bom in boms)
             {
                 var material = await _productRepository.GetByIdAsync(bom.ChildProductID);
-                if (material == null || material.StockQty < (bom.RequiredQty * targetQty))
+                if (material != null && material.ItemType == ItemType.RawMaterial && material.StockQty < (bom.RequiredQty * targetQty))
                     return false;
             }
             return true;
+        }
+
+        private async Task<List<(string MaterialId, int RequiredQty)>> GetLeafRawMaterialsAsync(string productId)
+        {
+            var result = new List<(string, int)>();
+            var queue = new Queue<(string ProductId, int Qty)>();
+            queue.Enqueue((productId, 1));
+            var visited = new HashSet<string> { productId };
+
+            while (queue.Count > 0)
+            {
+                var (currProduct, currQty) = queue.Dequeue();
+                var boms = await _bomRepository.FindAsync(b => b.ProductID == currProduct);
+
+                foreach (var bom in boms)
+                {
+                    var child = await _productRepository.GetByIdAsync(bom.ChildProductID);
+                    if (child != null)
+                    {
+                        if (child.ItemType == ItemType.RawMaterial)
+                        {
+                            result.Add((child.ProductID, currQty * bom.RequiredQty));
+                        }
+                        else if (!visited.Contains(child.ProductID))
+                        {
+                            visited.Add(child.ProductID);
+                            queue.Enqueue((child.ProductID, currQty * bom.RequiredQty));
+                        }
+                    }
+                }
+            }
+
+            return result;
         }
 
         public async Task ShipFinishedProductAsync(string productId, int workOrderId, int quantity, string destination)

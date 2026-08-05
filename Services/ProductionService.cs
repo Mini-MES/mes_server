@@ -9,6 +9,7 @@ using mes_server.Repositories.Interface.History;
 using mes_server.Repositories.Interface.Production;
 using mes_server.Repositories.Interface.MasterData;
 using mes_server.Services.Interface;
+using Microsoft.EntityFrameworkCore;
 
 namespace mes_server.Services
 {
@@ -126,8 +127,24 @@ namespace mes_server.Services
             await _workOrderRepository.CreateAsync(workOrder);
             await _context.SaveChangesAsync();
 
-            var processList = await _processMasterRepository.GetAllAsync();
-            var firstProcess = processList.OrderBy(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
+            var productBomProcessIds = await GetAllBomProcessIdsAsync(createDto.ProductID);
+            int? firstProcess = null;
+
+            if (productBomProcessIds.Any())
+            {
+                var processList = await _processMasterRepository.GetAllAsync();
+                firstProcess = processList
+                    .Where(p => productBomProcessIds.Contains(p.ProcessID))
+                    .OrderBy(p => p.SequenceOrder)
+                    .FirstOrDefault()?.ProcessID;
+            }
+
+            if (firstProcess == null)
+            {
+                var processList = await _processMasterRepository.GetAllAsync();
+                firstProcess = processList.OrderBy(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
+            }
+
             if (firstProcess == null)
             {
                 throw new InvalidOperationException("등록된 공정이 존재하지 않아 Lot을 자동 생성할 수 없습니다.");
@@ -242,7 +259,7 @@ namespace mes_server.Services
             {
                 throw new KeyNotFoundException("공정 정보를 찾을 수 없습니다.");
             }
-            return nextProc.SequenceOrder == currentProc.SequenceOrder + 1; // 다음 공정인지 체크
+            return nextProc.SequenceOrder > currentProc.SequenceOrder;
         }
 
         public async Task<string> StartProductionAsync(int orderId)
@@ -266,6 +283,15 @@ namespace mes_server.Services
 
             lot.Status = LotStatus.WIP;
             order.Status = OrderStatus.InProgress;
+
+            // 💡 생산 지시 시작 시 설비에 해당 LotID를 즉시 바인딩하여 센서 서비스가 올바른 Lot으로 펄스를 발행하도록 설정
+            var equipment = await _context.Equipments.FirstOrDefaultAsync();
+            if (equipment != null)
+            {
+                equipment.Status = EquipmentStatus.Running;
+                equipment.CurrentLotId = lot.LotID;
+            }
+
             await _context.SaveChangesAsync();
 
             return lot.LotID;
@@ -379,6 +405,32 @@ namespace mes_server.Services
 
             lot.Status = LotStatus.WIP;
             await _context.SaveChangesAsync();
+        }
+
+        private async Task<List<int>> GetAllBomProcessIdsAsync(string productId)
+        {
+            var processIds = new HashSet<int>();
+            var queue = new Queue<string>();
+            queue.Enqueue(productId);
+            var visitedProducts = new HashSet<string> { productId };
+
+            while (queue.Count > 0)
+            {
+                var currentProduct = queue.Dequeue();
+                var boms = await _bomRepository.FindAsync(b => b.ProductID == currentProduct);
+
+                foreach (var bom in boms)
+                {
+                    processIds.Add(bom.ProcessID);
+                    if (!visitedProducts.Contains(bom.ChildProductID))
+                    {
+                        visitedProducts.Add(bom.ChildProductID);
+                        queue.Enqueue(bom.ChildProductID);
+                    }
+                }
+            }
+
+            return processIds.ToList();
         }
     }
 }

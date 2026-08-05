@@ -73,6 +73,14 @@ namespace mes_server.Services
             {
                 equipment.CurrentLotId = request.CurrentLotID;
             }
+            else if (newStatus == EquipmentStatus.Running && string.IsNullOrEmpty(equipment.CurrentLotId))
+            {
+                var activeLot = await _context.Lots.FirstOrDefaultAsync(l => l.Status == mes_server.Models.Enum.LotStatus.WIP || l.Status == mes_server.Models.Enum.LotStatus.RELEASED);
+                if (activeLot != null)
+                {
+                    equipment.CurrentLotId = activeLot.LotID;
+                }
+            }
             equipment.LastStatusChangedAt = now;
 
             await _context.SaveChangesAsync();
