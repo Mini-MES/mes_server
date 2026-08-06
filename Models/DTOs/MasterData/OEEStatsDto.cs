@@ -2,9 +2,9 @@
 {
     public class EquipmentOeeDto
     {
-        public string EuquipmentId { get; set; } = null!;
+        public string EquipmentId { get; set; } = null!;
         public string EquipmentName { get; set; } = null!;
-        public string status { get; set; } = null!;
+        public string Status { get; set; } = null!;
         public double TotalRunningMinutes { get; set; }
         public double TotalDowntimeMinutes { get; set; }
         public double AvailabilityRate { get; set; } // 가동률

@@ -174,5 +174,59 @@ namespace mes_server.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<OEESummaryDto> GetOEESummaryAsync()
+        {
+            var equipments = await _equipmentRepository.GetAllAsync();
+            var performance = await _context.Performances.ToListAsync();
+            var workOrders = await _context.WorkOrders.ToListAsync();
+
+            var eqOeeList = new List<EquipmentOeeDto>();
+
+            int totalGood = performance.Sum(p => p.GoodQty);
+            int totalDefect = performance.Sum(p => p.BadQty);
+            int totalTarget = workOrders.Sum(w => w.TargetQty);
+
+            foreach(var eq in equipments)
+            {
+                double runSec = eq.TotalRunningSeconds;
+                double downSec = eq.TotalDowntimeSeconds;
+                double totalSec = runSec + downSec;
+
+                double availability = totalSec > 0 ? runSec / totalSec : 0;
+                double performanceRate = totalTarget > 0 ? (double)(totalGood + totalDefect) / totalTarget : 0;
+                double quality = (totalGood + totalDefect) > 0 ? (double)totalGood / (totalGood + totalDefect) : 0;
+
+                double oee = availability * performanceRate * quality;
+                
+                eqOeeList.Add(new EquipmentOeeDto
+                {
+                    EquipmentId = eq.EquipmentID,
+                    EquipmentName = eq.Name,
+                    Status = eq.Status,
+                    TotalRunningMinutes = runSec / 60,
+                    TotalDowntimeMinutes = downSec / 60,
+                    AvailabilityRate = availability * 100,
+                    PerformanceRate = performanceRate * 100,
+                    QualityRate = quality * 100,
+                    OEE = oee * 100
+                });
+            }
+            double avgOee = eqOeeList.Count > 0 ? Math.Round(eqOeeList.Average(e => e.OEE), 1) : 0.0;
+            double avgAvail = eqOeeList.Count > 0 ? Math.Round(eqOeeList.Average(e => e.AvailabilityRate), 1) : 0.0;
+            double avgPerf = eqOeeList.Count > 0 ? Math.Round(eqOeeList.Average(e => e.PerformanceRate), 1) : 0.0;
+            double avgQual = eqOeeList.Count > 0 ? Math.Round(eqOeeList.Average(e => e.QualityRate), 1) : 0.0;
+
+            return new OEESummaryDto
+            {
+                AverageOEE = avgOee,
+                AverageAvailabilityRate = avgAvail,
+                AveragePerformanceRate = avgPerf,
+                AverageQualityRate = avgQual,
+                TotalEquipmentCount = equipments.Count(),
+                RunningEquipmentCount = equipments.Count(e => e.Status == EquipmentStatus.Running),
+                StoppedEquipmentCount = equipments.Count(e => e.Status != EquipmentStatus.Running),
+            };
+        }
     }
 }
