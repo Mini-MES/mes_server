@@ -1,6 +1,5 @@
-﻿using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.DTOs.MasterData;
 using mes_server.Services.Interface;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mes_server.Controllers
@@ -58,6 +57,13 @@ namespace mes_server.Controllers
         public async Task<IActionResult> GetDowntimeHistory(string id)
         {
             var result = await _equipmentService.GetDowntimeLogsByEquipmentAsync(id);
+            return Ok(result);
+        }
+
+        [HttpGet("oee-stats")]
+        public async Task<IActionResult> GetOEEStats()
+        {
+            var result = await _equipmentService.GetOEESummaryAsync();
             return Ok(result);
         }
     }
