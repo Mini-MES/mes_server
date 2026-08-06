@@ -11,5 +11,6 @@ namespace mes_server.Services.Interface
         Task<bool> RegisterDowntimeReasonAsync(RegisterDowntimeReasonRequest request);
         Task<IEnumerable<DowntimeReasonDto>> GetDowntimeReasonsAsync();
         Task<IEnumerable<DowntimeLog>> GetDowntimeLogsByEquipmentAsync(string equipmentId);
+        Task<OEESummaryDto> GetOEESummaryAsync();
     }
 }
