@@ -53,6 +53,8 @@ namespace mes_server
             builder.Services.AddScoped<IProductionService, ProductionService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IEquipmentService, EquipmentService>();
+            builder.Services.AddHttpClient<GeminiApiService>();
+            builder.Services.AddScoped<AiPromptBuilder>();
             builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>
@@ -74,8 +76,15 @@ namespace mes_server
 
             // 4. 인증 관련
             var JwtSettings = builder.Configuration.GetSection("Jwt");
-            var keyString = builder.Configuration["Jwt:Key"]
-                ?? throw new InvalidOperationException("JWT Key가 설정되지 않았습니다!");
+            var keyString = builder.Configuration["Jwt:Key"];
+
+            if (string.IsNullOrWhiteSpace(keyString) || 
+                keyString.Contains("YOUR_JWT_SECRET_KEY") || 
+                keyString.Length < 32)
+            {
+                throw new InvalidOperationException("보안을 위해 유효한 JWT 비밀키(최소 32자 이상)를 appsettings.json에 설정해야 합니다!");
+            }
+
             var key = Encoding.ASCII.GetBytes(keyString);
 
             builder.Services.AddAuthentication(options =>
@@ -148,6 +157,21 @@ namespace mes_server
                 });
 
             var app = builder.Build();
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                try
+                {
+                    var context = services.GetRequiredService<MESDbContext>();
+                    DbInitializer.Initialize(context);
+                }
+                catch (Exception ex)
+                {
+                    var logger = services.GetRequiredService<ILogger<Program>>();
+                    logger.LogError(ex, "An error occurred while seeding the database.");
+                }
+            }
 
             // 미들웨어 등록 (순서 중요)
             app.UseCors("AllowAll");

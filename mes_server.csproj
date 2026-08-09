@@ -10,6 +10,7 @@
     <None Include=".github/ISSUE_TEMPLATE/bug_request.md" />
     <None Include=".github/ISSUE_TEMPLATE/feature_request.md" />
     <None Include=".github/PULL_REQUEST_TEMPLATE.md" />
+    <None Include="appsettings.Example.json" />
   </ItemGroup>
 
   <ItemGroup>
