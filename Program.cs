@@ -53,6 +53,8 @@ namespace mes_server
             builder.Services.AddScoped<IProductionService, ProductionService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IEquipmentService, EquipmentService>();
+            builder.Services.AddHttpClient<GeminiApiService>();
+            builder.Services.AddScoped<AiPromptBuilder>();
             builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>
@@ -162,7 +164,7 @@ namespace mes_server
                     var logger = services.GetRequiredService<ILogger<Program>>();
                     logger.LogError(ex, "An error occurred while seeding the database.");
                 }
-            })
+            }
 
             // 미들웨어 등록 (순서 중요)
             app.UseCors("AllowAll");

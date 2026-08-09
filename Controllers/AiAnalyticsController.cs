@@ -1,26 +1,35 @@
-﻿using mes_server.Data;
+using mes_server.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace mes_server.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class AiAnalyticsController
+    [Route("api/analytics")]
+    public class AiAnalyticsController : ControllerBase
     {
-        private readonly MESDbContext _context;
+        private readonly GeminiApiService _geminiService;
+        private readonly AiPromptBuilder _promptBuilder;
 
-        public AiAnalyticsController(MESDbContext context)
+        public AiAnalyticsController(GeminiApiService geminiService, AiPromptBuilder promptBuilder)
         {
-            _context = context;
+            _geminiService = geminiService;
+            _promptBuilder = promptBuilder;
         }
 
-        [HttpGet("ai-analytics")]
+        [HttpGet("ai-report")]
         public async Task<IActionResult> GetAiSmartReport()
         {
-            var equipments = await _context.Equipments.ToListAsync();
-                
-            return Ok(equipments);
+            string dynamicPrompt = await _promptBuilder.BuildDynamicOeePromptAsync();
+
+            string aiResultMarkdown = await _geminiService.GenerateReportAsync(dynamicPrompt);
+
+            return Ok(new
+            {
+                Success = true,
+                GeneratedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                TargetCompany = "(주)태성테크놀로지",
+                ReportMarkdown = aiResultMarkdown
+            });
         }
     }
 }
