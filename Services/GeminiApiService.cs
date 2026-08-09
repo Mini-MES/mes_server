@@ -3,23 +3,53 @@ using System.Text.Json;
 
 namespace mes_server.Services
 {
+    public class GeminiReportResult
+    {
+        public bool IsSuccess { get; set; }
+        public bool IsFallback { get; set; }
+        public string ReportMarkdown { get; set; } = string.Empty;
+        public string? ErrorMessage { get; set; }
+
+        public static GeminiReportResult Success(string reportMarkdown, bool isFallback = false)
+        {
+            return new GeminiReportResult
+            {
+                IsSuccess = true,
+                IsFallback = isFallback,
+                ReportMarkdown = reportMarkdown
+            };
+        }
+
+        public static GeminiReportResult Failure(string errorMessage)
+        {
+            return new GeminiReportResult
+            {
+                IsSuccess = false,
+                IsFallback = false,
+                ErrorMessage = errorMessage
+            };
+        }
+    }
+
     public class GeminiApiService
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
+        private readonly ILogger<GeminiApiService> _logger;
 
-        public GeminiApiService(HttpClient httpClient, IConfiguration configuration)
+        public GeminiApiService(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiApiService> logger)
         {
             _httpClient = httpClient;
             _apiKey = configuration["Gemini:ApiKey"] ?? "";
+            _logger = logger;
         }
 
-        public async Task<string> GenerateReportAsync(string dynamicPrompt)
+        public async Task<GeminiReportResult> GenerateReportAsync(string dynamicPrompt)
         {
             if (string.IsNullOrWhiteSpace(_apiKey) || _apiKey == "YOUR_GEMINI_API_KEY_HERE")
             {
-                // API 키가 아직 설정되지 않은 경우 반환할 폴백 분석 텍스트
-                return @"# 🤖 (주)태성테크놀로지 AI 스마트 생산 진단 리포트
+                _logger.LogInformation("Gemini API Key가 설정되지 않아 Fallback 리포트를 반환합니다.");
+                string fallbackText = @"# 🤖 (주)태성테크놀로지 AI 스마트 생산 진단 리포트
 
 > ⚠️ **안내**: Gemini API 키가 설정되지 않아 시스템 예시 진단 결과가 표시됩니다. `appsettings.json`에 `Gemini:ApiKey`를 설정하시면 구글 Gemini AI가 실시간으로 분석한 결과를 받아보실 수 있습니다.
 
@@ -55,6 +85,8 @@ namespace mes_server.Services
 #### 🥉 3순위 (중장기 / 설비 투자)
 * **CBM 상태기반 예지보전 센서 도입**: 스핀들 진동/온도 센서 부착으로 돌발 정지 사전 알람 연동
 * **공정 부하 재분배**: CNC03의 밀링 부하 일부를 가동률 여유가 있는 CNC04로 이관";
+
+                return GeminiReportResult.Success(fallbackText, isFallback: true);
             }
 
             try
@@ -89,14 +121,16 @@ namespace mes_server.Services
                         .GetProperty("text")
                         .GetString();
 
-                    return text ?? "AI 진단 결과를 반환받지 못했습니다.";
+                    return GeminiReportResult.Success(text ?? "AI 진단 결과를 반환받지 못했습니다.", isFallback: false);
                 }
 
-                return $"AI API 통신 응답 오류 (Status Code: {response.StatusCode})";
+                _logger.LogError("Gemini API 통신 실패 (Status Code: {StatusCode})", response.StatusCode);
+                return GeminiReportResult.Failure("AI API 서비스 응답 오류가 발생했습니다.");
             }
             catch (Exception ex)
             {
-                return $"AI API 호출 중 예외 발생: {ex.Message}";
+                _logger.LogError(ex, "Gemini API 호출 중 예외 발생");
+                return GeminiReportResult.Failure("AI API 호출 처리 중 예외가 발생했습니다.");
             }
         }
     }

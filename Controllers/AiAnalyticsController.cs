@@ -21,14 +21,24 @@ namespace mes_server.Controllers
         {
             string dynamicPrompt = await _promptBuilder.BuildDynamicOeePromptAsync();
 
-            string aiResultMarkdown = await _geminiService.GenerateReportAsync(dynamicPrompt);
+            var result = await _geminiService.GenerateReportAsync(dynamicPrompt);
+
+            if (!result.IsSuccess)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    Success = false,
+                    Message = result.ErrorMessage ?? "AI 스마트 진단 서비스 처리 중 오류가 발생했습니다."
+                });
+            }
 
             return Ok(new
             {
                 Success = true,
+                IsFallback = result.IsFallback,
                 GeneratedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 TargetCompany = "(주)태성테크놀로지",
-                ReportMarkdown = aiResultMarkdown
+                ReportMarkdown = result.ReportMarkdown
             });
         }
     }

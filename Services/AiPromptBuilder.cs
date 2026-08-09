@@ -18,7 +18,6 @@ namespace mes_server.Services
         public async Task<string> BuildDynamicOeePromptAsync()
         {
             var oeeSummary = await _equipmentService.GetOEESummaryAsync();
-            var downtimeLogs = await _context.DowntimeLogs.Include(d => d.DowntimeReason).ToListAsync();
 
             var sb = new StringBuilder();
             sb.AppendLine("너는 자동차 정밀가공 제조기업 (주)태성테크놀로지의 전문 MES AI 컨설턴트야.");
@@ -40,13 +39,19 @@ namespace mes_server.Services
                 sb.AppendLine($"- 현재 OEE: {bottleneck.OeePercentage}% (가동률: {bottleneck.AvailabilityRate}%, 성능: {bottleneck.PerformanceRate}%, 양품률: {bottleneck.QualityRate}%)");
                 sb.AppendLine($"- 총 비가동시간: {bottleneck.TotalDowntimeMinutes}분");
 
-                var topReasons = downtimeLogs
+                var topReasons = await _context.DowntimeLogs
+                    .AsNoTracking()
                     .Where(d => d.EquipmentID == bottleneck.EquipmentID && d.ReasonCode != null)
-                    .GroupBy(d => d.DowntimeReason?.ReasonName ?? d.ReasonCode)
-                    .Select(g => new { Reason = g.Key, TotalMinutes = g.Sum(x => (x.DurationSeconds ?? 0) / 60), Count = g.Count() })
+                    .GroupBy(d => d.DowntimeReason != null ? d.DowntimeReason.ReasonName : d.ReasonCode)
+                    .Select(g => new
+                    {
+                        Reason = g.Key ?? "기타 사유",
+                        TotalMinutes = (int)(g.Sum(x => x.DurationSeconds ?? 0) / 60),
+                        Count = g.Count()
+                    })
                     .OrderByDescending(r => r.TotalMinutes)
                     .Take(3)
-                    .ToList();
+                    .ToListAsync();
 
                 sb.AppendLine("- 주요 비가동 원인 Top 3 (DB 실시간 GroupBy 집계):");
                 int rank = 1;

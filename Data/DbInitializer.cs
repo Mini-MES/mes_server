@@ -34,11 +34,11 @@ namespace mes_server.Data
             {
                 var equipments = new List<Equipment>
                 {
-                    new Equipment { EquipmentID = "CNC01", Name = "CNC 선반 #1 (DOOSAN PUMA 2600)", Status = EquipmentStatus.Running, TotalRunningSeconds = 1240320, TotalDowntimeSeconds = 84480, LastStatusChangedAt = DateTime.UtcNow },
-                    new Equipment { EquipmentID = "CNC02", Name = "CNC 선반 #2 (DOOSAN PUMA 2600)", Status = EquipmentStatus.Running, TotalRunningSeconds = 1256700, TotalDowntimeSeconds = 68100, LastStatusChangedAt = DateTime.UtcNow },
-                    new Equipment { EquipmentID = "CNC03", Name = "CNC 밀링 #1 (HYUNDAI WIA F500 - 노후)", Status = EquipmentStatus.Stopped, TotalRunningSeconds = 1014960, TotalDowntimeSeconds = 309840, LastStatusChangedAt = DateTime.UtcNow },
-                    new Equipment { EquipmentID = "CNC04", Name = "CNC 밀링 #2 (HYUNDAI WIA F500D)", Status = EquipmentStatus.Running, TotalRunningSeconds = 1257060, TotalDowntimeSeconds = 67740, LastStatusChangedAt = DateTime.UtcNow },
-                    new Equipment { EquipmentID = "CNC05", Name = "연삭기 (STUDER S33)", Status = EquipmentStatus.Running, TotalRunningSeconds = 1209060, TotalDowntimeSeconds = 115740, LastStatusChangedAt = DateTime.UtcNow }
+                    new Equipment { EquipmentID = "CNC01", Name = "CNC 선반 #1 (DOOSAN PUMA 2600)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC01-01", TotalRunningSeconds = 1240320, TotalDowntimeSeconds = 84480, LastStatusChangedAt = DateTime.UtcNow },
+                    new Equipment { EquipmentID = "CNC02", Name = "CNC 선반 #2 (DOOSAN PUMA 2600)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC02-01", TotalRunningSeconds = 1256700, TotalDowntimeSeconds = 68100, LastStatusChangedAt = DateTime.UtcNow },
+                    new Equipment { EquipmentID = "CNC03", Name = "CNC 밀링 #1 (HYUNDAI WIA F500 - 노후)", Status = EquipmentStatus.Stopped, CurrentLotId = "LOT-CNC03-01", TotalRunningSeconds = 1014960, TotalDowntimeSeconds = 309840, LastStatusChangedAt = DateTime.UtcNow },
+                    new Equipment { EquipmentID = "CNC04", Name = "CNC 밀링 #2 (HYUNDAI WIA F500D)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC04-01", TotalRunningSeconds = 1257060, TotalDowntimeSeconds = 67740, LastStatusChangedAt = DateTime.UtcNow },
+                    new Equipment { EquipmentID = "CNC05", Name = "연삭기 (STUDER S33)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC05-01", TotalRunningSeconds = 1209060, TotalDowntimeSeconds = 115740, LastStatusChangedAt = DateTime.UtcNow }
                 };
                 context.Equipments.AddRange(equipments);
                 context.SaveChanges();
@@ -60,15 +60,16 @@ namespace mes_server.Data
                 context.SaveChanges();
             }
 
-            // 4. 사용자 (User)
+            // 4. 사용자 (User) - BCrypt 해시 비밀번호 적용
             if (!context.Users.Any())
             {
+                string defaultPasswordHash = BCrypt.Net.BCrypt.HashPassword("password123");
                 var users = new List<User>
                 {
-                    new User { UserID = "admin", UserName = "관리자 (생산관리팀)", UserRole = "Admin", PasswordHash = "password123" },
-                    new User { UserID = "operator1", UserName = "이종원 (생산1팀)", UserRole = "Operator", PasswordHash = "password123" },
-                    new User { UserID = "operator2", UserName = "서봉준 (생산1팀)", UserRole = "Operator", PasswordHash = "password123" },
-                    new User { UserID = "operator3", UserName = "송은섭 (생산2팀)", UserRole = "Operator", PasswordHash = "password123" }
+                    new User { UserID = "admin", UserName = "관리자 (생산관리팀)", UserRole = "Admin", PasswordHash = defaultPasswordHash },
+                    new User { UserID = "operator1", UserName = "이종원 (생산1팀)", UserRole = "Operator", PasswordHash = defaultPasswordHash },
+                    new User { UserID = "operator2", UserName = "서봉준 (생산1팀)", UserRole = "Operator", PasswordHash = defaultPasswordHash },
+                    new User { UserID = "operator3", UserName = "송은섭 (생산2팀)", UserRole = "Operator", PasswordHash = defaultPasswordHash }
                 };
                 context.Users.AddRange(users);
                 context.SaveChanges();
@@ -93,30 +94,115 @@ namespace mes_server.Data
                 context.SaveChanges();
             }
 
-            // 6. 비가동 내역 (DowntimeLog) - CNC03 3대 핵심 병목원인 포함
+            // 6. 비가동 내역 (DowntimeLog) - 총 221건 시드 데이터
             if (!context.DowntimeLogs.Any())
             {
-                var logs = new List<DowntimeLog>
-                {
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 7, 8, 58, 0), EndedAt = new DateTime(2025, 10, 7, 15, 10, 0), DurationSeconds = 372 * 60, ReasonCode = "DT-BREAK-SPINDLE", OperatorMemo = "스핀들 발열 및 과진동 발생. 긴급 수리 진행", UserID = "operator1" },
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 8, 9, 24, 0), EndedAt = new DateTime(2025, 10, 8, 16, 43, 0), DurationSeconds = 439 * 60, ReasonCode = "DT-BREAK-SPINDLE", OperatorMemo = "스핀들 재작동 오류 및 부품 수급 교체 수리", UserID = "operator1" },
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 1, 8, 38, 0), EndedAt = new DateTime(2025, 10, 1, 10, 3, 0), DurationSeconds = 85 * 60, ReasonCode = "DT-BREAK-ELECT", OperatorMemo = "전기계통 이송센서 누전 점검", UserID = "operator1" },
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 2, 9, 20, 0), EndedAt = new DateTime(2025, 10, 2, 10, 10, 0), DurationSeconds = 50 * 60, ReasonCode = "DT-SETUP-JIG", OperatorMemo = "FG-SFT-100용 전용 지그 세팅", UserID = "operator1" },
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 3, 8, 28, 0), EndedAt = new DateTime(2025, 10, 3, 9, 19, 0), DurationSeconds = 51 * 60, ReasonCode = "DT-SETUP-PROG", OperatorMemo = "프로그램 수정 및 교체", UserID = "operator1" },
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 3, 10, 34, 0), EndedAt = new DateTime(2025, 10, 3, 11, 29, 0), DurationSeconds = 55 * 60, ReasonCode = "DT-SETUP-TOOL", OperatorMemo = "키홈 밀링 엔드밀 세팅", UserID = "operator1" },
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 6, 9, 3, 0), EndedAt = new DateTime(2025, 10, 6, 9, 47, 0), DurationSeconds = 44 * 60, ReasonCode = "DT-SETUP-JIG", OperatorMemo = "지그 교체 및 영점조정", UserID = "operator1" },
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 2, 10, 36, 0), EndedAt = new DateTime(2025, 10, 2, 11, 23, 0), DurationSeconds = 47 * 60, ReasonCode = "DT-WAIT-MAT", OperatorMemo = "자재 불출 지연으로 인한 가동 대기", UserID = "operator2" },
-                    new DowntimeLog { EquipmentID = "CNC03", StartedAt = new DateTime(2025, 10, 6, 10, 4, 0), EndedAt = new DateTime(2025, 10, 6, 10, 31, 0), DurationSeconds = 27 * 60, ReasonCode = "DT-WAIT-PREV", OperatorMemo = "1공정(선삭) 1차 가공품 공급 대기", UserID = "operator2" },
-                    new DowntimeLog { EquipmentID = "CNC01", StartedAt = new DateTime(2025, 10, 1, 8, 23, 0), EndedAt = new DateTime(2025, 10, 1, 8, 34, 0), DurationSeconds = 11 * 60, ReasonCode = "DT-WAIT-MAT", OperatorMemo = "원자재 환봉 입고 검사 대기", UserID = "operator2" },
-                    new DowntimeLog { EquipmentID = "CNC02", StartedAt = new DateTime(2025, 10, 1, 8, 32, 0), EndedAt = new DateTime(2025, 10, 1, 8, 43, 0), DurationSeconds = 11 * 60, ReasonCode = "DT-TOOL-CHANGE", OperatorMemo = "황삭 인서트 팁 교체", UserID = "operator2" },
-                    new DowntimeLog { EquipmentID = "CNC04", StartedAt = new DateTime(2025, 10, 1, 9, 1, 0), EndedAt = new DateTime(2025, 10, 1, 9, 14, 0), DurationSeconds = 13 * 60, ReasonCode = "DT-TOOL-CHANGE", OperatorMemo = "스플라인 카터 공구 마모 교체", UserID = "operator1" },
-                    new DowntimeLog { EquipmentID = "CNC05", StartedAt = new DateTime(2025, 10, 1, 8, 43, 0), EndedAt = new DateTime(2025, 10, 1, 9, 11, 0), DurationSeconds = 28 * 60, ReasonCode = "DT-TOOL-CHANGE", OperatorMemo = "연삭석 드레싱 및 교체", UserID = "operator3" }
+                var logs = new List<DowntimeLog>();
+                DateTime baseTime = new DateTime(2025, 10, 1, 8, 0, 0);
+
+                // CNC03 (최저 OEE 핵심 병목 설비) - 90건
+                string[] cnc03Reasons = { "DT-BREAK-SPINDLE", "DT-SETUP-JIG", "DT-WAIT-MAT", "DT-SETUP-PROG", "DT-SETUP-TOOL", "DT-BREAK-ELECT", "DT-WAIT-PREV" };
+                string[] cnc03Memos = {
+                    "스핀들 발열 및 과진동 발생 긴급 정지 점검",
+                    "FG-SFT-100 전용 지그 교체 및 영점 측정",
+                    "자재 불출 지연으로 인한 설비 가동 대기",
+                    "CNC 밀링 가공 프로그램 셋업 및 수정",
+                    "키홈 밀링 엔드밀 세팅 및 위치 측정",
+                    "전기계통 이송센서 누전 긴급 점검",
+                    "1공정 선삭 반제품 공급 대기"
                 };
+
+                for (int i = 0; i < 90; i++)
+                {
+                    int rIdx = i % cnc03Reasons.Length;
+                    int durationMin = (rIdx == 0) ? (35 + (i * 7) % 150) : (15 + (i * 5) % 45);
+                    DateTime start = baseTime.AddHours(i * 3).AddMinutes(i * 11 % 50);
+
+                    logs.Add(new DowntimeLog
+                    {
+                        EquipmentID = "CNC03",
+                        StartedAt = start,
+                        EndedAt = start.AddMinutes(durationMin),
+                        DurationSeconds = durationMin * 60,
+                        ReasonCode = cnc03Reasons[rIdx],
+                        OperatorMemo = cnc03Memos[rIdx],
+                        UserID = (i % 2 == 0) ? "operator1" : "operator2"
+                    });
+                }
+
+                // CNC01 - 35건
+                for (int i = 0; i < 35; i++)
+                {
+                    DateTime start = baseTime.AddHours(i * 7).AddMinutes(10);
+                    int durationMin = 10 + (i * 3) % 25;
+                    logs.Add(new DowntimeLog
+                    {
+                        EquipmentID = "CNC01",
+                        StartedAt = start,
+                        EndedAt = start.AddMinutes(durationMin),
+                        DurationSeconds = durationMin * 60,
+                        ReasonCode = (i % 2 == 0) ? "DT-WAIT-MAT" : "DT-TOOL-CHANGE",
+                        OperatorMemo = (i % 2 == 0) ? "원자재 환봉 입고 검사 대기" : "황삭 인서트 팁 교체",
+                        UserID = "operator2"
+                    });
+                }
+
+                // CNC02 - 30건
+                for (int i = 0; i < 30; i++)
+                {
+                    DateTime start = baseTime.AddHours(i * 8).AddMinutes(15);
+                    int durationMin = 10 + (i * 4) % 20;
+                    logs.Add(new DowntimeLog
+                    {
+                        EquipmentID = "CNC02",
+                        StartedAt = start,
+                        EndedAt = start.AddMinutes(durationMin),
+                        DurationSeconds = durationMin * 60,
+                        ReasonCode = (i % 3 == 0) ? "DT-QUAL-ADJ" : "DT-TOOL-CHANGE",
+                        OperatorMemo = (i % 3 == 0) ? "치수 이탈 가공 보정" : "바이트 인서트 팁 교체",
+                        UserID = "operator2"
+                    });
+                }
+
+                // CNC04 - 32건
+                for (int i = 0; i < 32; i++)
+                {
+                    DateTime start = baseTime.AddHours(i * 7.5).AddMinutes(20);
+                    int durationMin = 12 + (i * 3) % 30;
+                    logs.Add(new DowntimeLog
+                    {
+                        EquipmentID = "CNC04",
+                        StartedAt = start,
+                        EndedAt = start.AddMinutes(durationMin),
+                        DurationSeconds = durationMin * 60,
+                        ReasonCode = (i % 2 == 0) ? "DT-SETUP-TOOL" : "DT-TOOL-CHANGE",
+                        OperatorMemo = "공구 세팅 및 마모 교체",
+                        UserID = "operator1"
+                    });
+                }
+
+                // CNC05 - 34건
+                for (int i = 0; i < 34; i++)
+                {
+                    DateTime start = baseTime.AddHours(i * 7.2).AddMinutes(25);
+                    int durationMin = 15 + (i * 2) % 35;
+                    logs.Add(new DowntimeLog
+                    {
+                        EquipmentID = "CNC05",
+                        StartedAt = start,
+                        EndedAt = start.AddMinutes(durationMin),
+                        DurationSeconds = durationMin * 60,
+                        ReasonCode = "DT-TOOL-CHANGE",
+                        OperatorMemo = "연삭석 드레싱 및 세팅",
+                        UserID = "operator3"
+                    });
+                }
+
                 context.DowntimeLogs.AddRange(logs);
                 context.SaveChanges();
             }
 
-            // 7. 작업지시 및 생산 실적
+            // 7. 작업지시, LOT 및 생산 실적 (총 116건 시드 데이터)
             if (!context.WorkOrders.Any())
             {
                 var workOrder = new WorkOrder
@@ -125,7 +211,7 @@ namespace mes_server.Data
                     TargetQty = 2500,
                     TotalGoodQty = 2390,
                     TotalBadQty = 45,
-                    Status = OrderStatus.Completed,
+                    Status = OrderStatus.InProgress,
                     OrderDate = new DateTime(2025, 10, 1),
                     StartDate = new DateTime(2025, 10, 1),
                     DueDate = new DateTime(2025, 10, 31)
@@ -133,14 +219,103 @@ namespace mes_server.Data
                 context.WorkOrders.Add(workOrder);
                 context.SaveChanges();
 
-                var perfList = new List<Performance>
+                if (!context.Lots.Any())
                 {
-                    new Performance { WorkOrderID = workOrder.OrderID, LotID = "LOT-202510-01", ProcessID = 2, UserID = "operator1", InputQty = 1573, GoodQty = 1550, BadQty = 23, WorkDate = new DateTime(2025, 10, 31) },
-                    new Performance { WorkOrderID = workOrder.OrderID, LotID = "LOT-202510-02", ProcessID = 2, UserID = "operator1", InputQty = 1648, GoodQty = 1625, BadQty = 23, WorkDate = new DateTime(2025, 10, 31) },
-                    new Performance { WorkOrderID = workOrder.OrderID, LotID = "LOT-202510-03", ProcessID = 3, UserID = "operator2", InputQty = 753, GoodQty = 726, BadQty = 27, WorkDate = new DateTime(2025, 10, 31) },
-                    new Performance { WorkOrderID = workOrder.OrderID, LotID = "LOT-202510-04", ProcessID = 3, UserID = "operator2", InputQty = 1067, GoodQty = 1044, BadQty = 23, WorkDate = new DateTime(2025, 10, 31) },
-                    new Performance { WorkOrderID = workOrder.OrderID, LotID = "LOT-202510-05", ProcessID = 5, UserID = "operator3", InputQty = 2207, GoodQty = 2161, BadQty = 46, WorkDate = new DateTime(2025, 10, 31) }
-                };
+                    var lots = new List<Lot>
+                    {
+                        new Lot { LotID = "LOT-CNC01-01", OrderID = workOrder.OrderID, CurrentProcessID = 2, Status = LotStatus.WIP },
+                        new Lot { LotID = "LOT-CNC02-01", OrderID = workOrder.OrderID, CurrentProcessID = 2, Status = LotStatus.WIP },
+                        new Lot { LotID = "LOT-CNC03-01", OrderID = workOrder.OrderID, CurrentProcessID = 3, Status = LotStatus.WIP },
+                        new Lot { LotID = "LOT-CNC04-01", OrderID = workOrder.OrderID, CurrentProcessID = 3, Status = LotStatus.WIP },
+                        new Lot { LotID = "LOT-CNC05-01", OrderID = workOrder.OrderID, CurrentProcessID = 5, Status = LotStatus.WIP }
+                    };
+                    context.Lots.AddRange(lots);
+                    context.SaveChanges();
+                }
+
+                var perfList = new List<Performance>();
+                DateTime baseDate = new DateTime(2025, 10, 1, 9, 0, 0);
+
+                // LOT-CNC01-01 (25건)
+                for (int i = 0; i < 25; i++)
+                {
+                    perfList.Add(new Performance
+                    {
+                        WorkOrderID = workOrder.OrderID,
+                        LotID = "LOT-CNC01-01",
+                        ProcessID = 2,
+                        UserID = "operator1",
+                        InputQty = 60,
+                        GoodQty = 59,
+                        BadQty = 1,
+                        WorkDate = baseDate.AddHours(i * 4)
+                    });
+                }
+
+                // LOT-CNC02-01 (25건)
+                for (int i = 0; i < 25; i++)
+                {
+                    perfList.Add(new Performance
+                    {
+                        WorkOrderID = workOrder.OrderID,
+                        LotID = "LOT-CNC02-01",
+                        ProcessID = 2,
+                        UserID = "operator1",
+                        InputQty = 62,
+                        GoodQty = 61,
+                        BadQty = 1,
+                        WorkDate = baseDate.AddHours(i * 4.1)
+                    });
+                }
+
+                // LOT-CNC03-01 (20건)
+                for (int i = 0; i < 20; i++)
+                {
+                    perfList.Add(new Performance
+                    {
+                        WorkOrderID = workOrder.OrderID,
+                        LotID = "LOT-CNC03-01",
+                        ProcessID = 3,
+                        UserID = "operator2",
+                        InputQty = 40,
+                        GoodQty = 37,
+                        BadQty = 3,
+                        WorkDate = baseDate.AddHours(i * 5)
+                    });
+                }
+
+                // LOT-CNC04-01 (23건)
+                for (int i = 0; i < 23; i++)
+                {
+                    perfList.Add(new Performance
+                    {
+                        WorkOrderID = workOrder.OrderID,
+                        LotID = "LOT-CNC04-01",
+                        ProcessID = 3,
+                        UserID = "operator2",
+                        InputQty = 50,
+                        GoodQty = 49,
+                        BadQty = 1,
+                        WorkDate = baseDate.AddHours(i * 4.5)
+                    });
+                }
+
+                // LOT-CNC05-01 (23건)
+                for (int i = 0; i < 23; i++)
+                {
+                    perfList.Add(new Performance
+                    {
+                        WorkOrderID = workOrder.OrderID,
+                        LotID = "LOT-CNC05-01",
+                        ProcessID = 5,
+                        UserID = "operator3",
+                        InputQty = 55,
+                        GoodQty = 54,
+                        BadQty = 1,
+                        WorkDate = baseDate.AddHours(i * 4.4)
+                    });
+                }
+
                 context.Performances.AddRange(perfList);
                 context.SaveChanges();
             }
