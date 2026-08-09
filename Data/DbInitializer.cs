@@ -94,13 +94,13 @@ namespace mes_server.Data
                 context.SaveChanges();
             }
 
-            // 6. 비가동 내역 (DowntimeLog) - 총 221건 시드 데이터
+            // 6. 비가동 내역 (DowntimeLog) - 총 221건 시드 데이터 (DateTimeKind.Utc 적용 및 중첩 방지)
             if (!context.DowntimeLogs.Any())
             {
                 var logs = new List<DowntimeLog>();
-                DateTime baseTime = new DateTime(2025, 10, 1, 8, 0, 0);
+                DateTime baseTime = new DateTime(2025, 10, 1, 8, 0, 0, DateTimeKind.Utc);
 
-                // CNC03 (최저 OEE 핵심 병목 설비) - 90건
+                // CNC03 (최저 OEE 핵심 병목 설비) - 90건 (5시간 간격, 최대 120분 지속으로 중첩 완전 제거)
                 string[] cnc03Reasons = { "DT-BREAK-SPINDLE", "DT-SETUP-JIG", "DT-WAIT-MAT", "DT-SETUP-PROG", "DT-SETUP-TOOL", "DT-BREAK-ELECT", "DT-WAIT-PREV" };
                 string[] cnc03Memos = {
                     "스핀들 발열 및 과진동 발생 긴급 정지 점검",
@@ -115,8 +115,8 @@ namespace mes_server.Data
                 for (int i = 0; i < 90; i++)
                 {
                     int rIdx = i % cnc03Reasons.Length;
-                    int durationMin = (rIdx == 0) ? (35 + (i * 7) % 150) : (15 + (i * 5) % 45);
-                    DateTime start = baseTime.AddHours(i * 3).AddMinutes(i * 11 % 50);
+                    int durationMin = (rIdx == 0) ? (35 + (i * 7) % 85) : (15 + (i * 5) % 40); // 15분 ~ 120분
+                    DateTime start = baseTime.AddHours(i * 5).AddMinutes((i * 11) % 30);
 
                     logs.Add(new DowntimeLog
                     {
@@ -130,7 +130,7 @@ namespace mes_server.Data
                     });
                 }
 
-                // CNC01 - 35건
+                // CNC01 - 35건 (7시간 간격)
                 for (int i = 0; i < 35; i++)
                 {
                     DateTime start = baseTime.AddHours(i * 7).AddMinutes(10);
@@ -147,7 +147,7 @@ namespace mes_server.Data
                     });
                 }
 
-                // CNC02 - 30건
+                // CNC02 - 30건 (8시간 간격)
                 for (int i = 0; i < 30; i++)
                 {
                     DateTime start = baseTime.AddHours(i * 8).AddMinutes(15);
@@ -164,7 +164,7 @@ namespace mes_server.Data
                     });
                 }
 
-                // CNC04 - 32건
+                // CNC04 - 32건 (7.5시간 간격)
                 for (int i = 0; i < 32; i++)
                 {
                     DateTime start = baseTime.AddHours(i * 7.5).AddMinutes(20);
@@ -181,7 +181,7 @@ namespace mes_server.Data
                     });
                 }
 
-                // CNC05 - 34건
+                // CNC05 - 34건 (7.2시간 간격)
                 for (int i = 0; i < 34; i++)
                 {
                     DateTime start = baseTime.AddHours(i * 7.2).AddMinutes(25);
@@ -200,11 +200,27 @@ namespace mes_server.Data
 
                 context.DowntimeLogs.AddRange(logs);
                 context.SaveChanges();
+
+                // 설비별 TotalDowntimeSeconds를 생성된 시드 DowntimeLog 합계로 동적 업데이트
+                var eqList = context.Equipments.ToList();
+                foreach (var eq in eqList)
+                {
+                    var sumDowntime = context.DowntimeLogs
+                        .Where(d => d.EquipmentID == eq.EquipmentID)
+                        .Sum(d => d.DurationSeconds ?? 0);
+                    eq.TotalDowntimeSeconds = sumDowntime;
+                }
+                context.SaveChanges();
             }
 
-            // 7. 작업지시, LOT 및 생산 실적 (총 116건 시드 데이터)
-            if (!context.WorkOrders.Any())
+            // 7. 작업지시, LOT 및 생산 실적 (단일 트랜잭션 개념의 원자적 시딩 - 총 116건)
+            if (!context.WorkOrders.Any() || !context.Lots.Any() || !context.Performances.Any())
             {
+                if (context.Performances.Any()) context.Performances.RemoveRange(context.Performances);
+                if (context.Lots.Any()) context.Lots.RemoveRange(context.Lots);
+                if (context.WorkOrders.Any()) context.WorkOrders.RemoveRange(context.WorkOrders);
+                context.SaveChanges();
+
                 var workOrder = new WorkOrder
                 {
                     ProductID = "FG-SFT-100",
@@ -212,29 +228,26 @@ namespace mes_server.Data
                     TotalGoodQty = 2390,
                     TotalBadQty = 45,
                     Status = OrderStatus.InProgress,
-                    OrderDate = new DateTime(2025, 10, 1),
-                    StartDate = new DateTime(2025, 10, 1),
-                    DueDate = new DateTime(2025, 10, 31)
+                    OrderDate = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+                    StartDate = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+                    DueDate = new DateTime(2025, 10, 31, 0, 0, 0, DateTimeKind.Utc)
                 };
                 context.WorkOrders.Add(workOrder);
                 context.SaveChanges();
 
-                if (!context.Lots.Any())
+                var lots = new List<Lot>
                 {
-                    var lots = new List<Lot>
-                    {
-                        new Lot { LotID = "LOT-CNC01-01", OrderID = workOrder.OrderID, CurrentProcessID = 2, Status = LotStatus.WIP },
-                        new Lot { LotID = "LOT-CNC02-01", OrderID = workOrder.OrderID, CurrentProcessID = 2, Status = LotStatus.WIP },
-                        new Lot { LotID = "LOT-CNC03-01", OrderID = workOrder.OrderID, CurrentProcessID = 3, Status = LotStatus.WIP },
-                        new Lot { LotID = "LOT-CNC04-01", OrderID = workOrder.OrderID, CurrentProcessID = 3, Status = LotStatus.WIP },
-                        new Lot { LotID = "LOT-CNC05-01", OrderID = workOrder.OrderID, CurrentProcessID = 5, Status = LotStatus.WIP }
-                    };
-                    context.Lots.AddRange(lots);
-                    context.SaveChanges();
-                }
+                    new Lot { LotID = "LOT-CNC01-01", OrderID = workOrder.OrderID, CurrentProcessID = 2, Status = LotStatus.WIP },
+                    new Lot { LotID = "LOT-CNC02-01", OrderID = workOrder.OrderID, CurrentProcessID = 2, Status = LotStatus.WIP },
+                    new Lot { LotID = "LOT-CNC03-01", OrderID = workOrder.OrderID, CurrentProcessID = 3, Status = LotStatus.WIP },
+                    new Lot { LotID = "LOT-CNC04-01", OrderID = workOrder.OrderID, CurrentProcessID = 3, Status = LotStatus.WIP },
+                    new Lot { LotID = "LOT-CNC05-01", OrderID = workOrder.OrderID, CurrentProcessID = 5, Status = LotStatus.WIP }
+                };
+                context.Lots.AddRange(lots);
+                context.SaveChanges();
 
                 var perfList = new List<Performance>();
-                DateTime baseDate = new DateTime(2025, 10, 1, 9, 0, 0);
+                DateTime baseDate = new DateTime(2025, 10, 1, 9, 0, 0, DateTimeKind.Utc);
 
                 // LOT-CNC01-01 (25건)
                 for (int i = 0; i < 25; i++)
