@@ -76,8 +76,15 @@ namespace mes_server
 
             // 4. 인증 관련
             var JwtSettings = builder.Configuration.GetSection("Jwt");
-            var keyString = builder.Configuration["Jwt:Key"]
-                ?? throw new InvalidOperationException("JWT Key가 설정되지 않았습니다!");
+            var keyString = builder.Configuration["Jwt:Key"];
+
+            if (string.IsNullOrWhiteSpace(keyString) || 
+                keyString.Contains("YOUR_JWT_SECRET_KEY") || 
+                keyString.Length < 32)
+            {
+                throw new InvalidOperationException("보안을 위해 유효한 JWT 비밀키(최소 32자 이상)를 appsettings.json에 설정해야 합니다!");
+            }
+
             var key = Encoding.ASCII.GetBytes(keyString);
 
             builder.Services.AddAuthentication(options =>
