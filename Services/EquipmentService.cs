@@ -200,26 +200,26 @@ namespace mes_server.Services
                 int eqGood = eqPerformances.Sum(p => p.GoodQty);
                 int eqDefect = eqPerformances.Sum(p => p.BadQty);
                 int eqTotalProd = eqGood + eqDefect;
-
+                
                 var activeWorkOrder = workOrders.FirstOrDefault(w => w.Status == OrderStatus.InProgress);
                 int eqTarget = activeWorkOrder?.TargetQty ?? 100;
-
+                                                                                                                                 
                 double runSec = eq.TotalRunningSeconds;
                 double downSec = eq.TotalDowntimeSeconds;
                 double totalSec = runSec + downSec;
-
+                                                                                                                                         
                 double availability = totalSec > 0
                     ? Math.Min(100.0, Math.Round((runSec / totalSec) * 100.0, 1))
                     : 0.0;
-
+                                                                                                                                    
                 double performanceRate = eqTarget > 0
                     ? Math.Min(100.0, Math.Round(((double)eqTotalProd / eqTarget) * 100.0, 1))
                     : 0.0;
-
+                                                                                                                                      
                 double quality = eqTotalProd > 0
                     ? Math.Round(((double)eqGood / eqTotalProd) * 100.0, 1)
                     : 100.0;
-
+                
                 double oee = Math.Round((availability * performanceRate * quality) / 10000.0, 1);
 
                 eqOeeList.Add(new EquipmentOeeDto
