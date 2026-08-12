@@ -35,7 +35,6 @@ namespace mes_server.Controllers
             return Ok(new
             {
                 Success = true,
-                IsFallback = result.IsFallback,
                 GeneratedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 TargetCompany = "(주)태성테크놀로지",
                 ReportMarkdown = result.ReportMarkdown
