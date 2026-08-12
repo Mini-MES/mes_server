@@ -1,4 +1,4 @@
-namespace mes_server.Models.DTOs
+namespace mes_server.Models.DTOs.MasterData
 {
     public class EquipmentOeeStatDto
     {
