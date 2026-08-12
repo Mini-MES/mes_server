@@ -1,4 +1,5 @@
 using mes_server.Models.History;
+using mes_server.Models.Analytics;
 using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using Microsoft.EntityFrameworkCore;
@@ -31,8 +32,21 @@ namespace mes_server.Data
         public DbSet<ToolHistory> ToolHistories { get; set; }
         public DbSet<Shipment> Shipments { get; set; }
 
+        // Analytics (imported snapshots; separate from operational production data)
+        public DbSet<DailyEquipmentProduction> DailyEquipmentProductions { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<DailyEquipmentProduction>()
+                .HasIndex(o => new { o.EquipmentID, o.WorkDate })
+                .IsUnique();
+
+            modelBuilder.Entity<DailyEquipmentProduction>()
+                .HasOne(o => o.Equipment)
+                .WithMany()
+                .HasForeignKey(o => o.EquipmentID)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // BOM 복합키 설정
             modelBuilder.Entity<BOM>()
                 .HasKey(b => new { b.ProductID, b.ChildProductID, b.ProcessID });
