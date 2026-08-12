@@ -1,5 +1,6 @@
 using mes_server.Data;
 using mes_server.Hubs;
+using mes_server.Models.DTOs.Analytics;
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
@@ -212,9 +213,10 @@ namespace mes_server.Services
                     ? Math.Min(100.0, Math.Round((runSec / totalSec) * 100.0, 1))
                     : 0.0;
                                                                                                                                     
-                double performanceRate = eqTarget > 0
-                    ? Math.Min(100.0, Math.Round(((double)eqTotalProd / eqTarget) * 100.0, 1))
-                    : 0.0;
+                double runMin = runSec / 60.0;
+                double performanceRate = runMin > 0
+                    ? Math.Min(100.0, Math.Round(((0.8 * eqTotalProd) / runMin) * 100.0, 1))
+                    : (eqTarget > 0 ? Math.Min(100.0, Math.Round(((double)eqTotalProd / eqTarget) * 100.0, 1)) : 0.0);
                                                                                                                                       
                 double quality = eqTotalProd > 0
                     ? Math.Round(((double)eqGood / eqTotalProd) * 100.0, 1)
@@ -257,6 +259,52 @@ namespace mes_server.Services
                 StoppedEquipments = equipments.Count(e => e.Status != EquipmentStatus.Running),
                 Equipments = eqOeeList
             };
+        }
+
+        public async Task<IEnumerable<DailyEquipmentProductionDto>> GetDailyEquipmentProductionsAsync(string? equipmentId = null, DateOnly? startDate = null, DateOnly? endDate = null)
+        {
+            var query = _context.DailyEquipmentProductions
+                .Include(d => d.Equipment)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(equipmentId))
+            {
+                query = query.Where(d => d.EquipmentID == equipmentId);
+            }
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(d => d.WorkDate >= startDate.Value);
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(d => d.WorkDate <= endDate.Value);
+            }
+
+            var list = await query
+                .OrderByDescending(d => d.WorkDate)
+                .ThenBy(d => d.EquipmentID)
+                .ToListAsync();
+
+            return list.Select(d => new DailyEquipmentProductionDto
+            {
+                DailyEquipmentOeeID = d.DailyEquipmentOeeID,
+                WorkDate = d.WorkDate,
+                EquipmentID = d.EquipmentID,
+                EquipmentName = d.Equipment?.Name ?? d.EquipmentID,
+                PlannedProductionMinutes = d.PlannedProductionMinutes,
+                OperatingMinutes = d.OperatingMinutes,
+                DowntimeMinutes = d.DowntimeMinutes,
+                TotalProducedQty = d.TotalProducedQty,
+                GoodQty = d.GoodQty,
+                DefectQty = d.DefectQty,
+                IdealCycleTimeMinutes = d.IdealCycleTimeMinutes,
+                AvailabilityRate = d.AvailabilityRate,
+                PerformanceRate = d.PerformanceRate,
+                QualityRate = d.QualityRate,
+                OeePercentage = d.OeePercentage
+            });
         }
     }
 }

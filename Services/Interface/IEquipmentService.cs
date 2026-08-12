@@ -1,3 +1,4 @@
+using mes_server.Models.DTOs.Analytics;
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
 
@@ -12,5 +13,6 @@ namespace mes_server.Services.Interface
         Task<IEnumerable<DowntimeReasonDto>> GetDowntimeReasonsAsync();
         Task<IEnumerable<DowntimeLog>> GetDowntimeLogsByEquipmentAsync(string equipmentId);
         Task<OEESummaryDto> GetOEESummaryAsync();
+        Task<IEnumerable<DailyEquipmentProductionDto>> GetDailyEquipmentProductionsAsync(string? equipmentId = null, DateOnly? startDate = null, DateOnly? endDate = null);
     }
 }

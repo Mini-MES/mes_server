@@ -66,5 +66,15 @@ namespace mes_server.Controllers
             var result = await _equipmentService.GetOEESummaryAsync();
             return Ok(result);
         }
+
+        [HttpGet("daily-production")]
+        public async Task<IActionResult> GetDailyEquipmentProductions(
+            [FromQuery] string? equipmentId,
+            [FromQuery] DateOnly? startDate,
+            [FromQuery] DateOnly? endDate)
+        {
+            var result = await _equipmentService.GetDailyEquipmentProductionsAsync(equipmentId, startDate, endDate);
+            return Ok(result);
+        }
     }
 }
