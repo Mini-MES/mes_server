@@ -1,5 +1,6 @@
 using mes_server.Data;
 using mes_server.Hubs;
+using mes_server.Models.Analytics;
 using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.SignalR;
@@ -13,6 +14,7 @@ namespace mes_server.Services
         private readonly IHubContext<MesHub> _hubContext;
         private readonly ILogger<AutomatedSensorBackgroundService> _logger;
         private readonly IConfiguration _configuration;
+        private DateTime _lastDailySyncTime = DateTime.MinValue;
 
         public AutomatedSensorBackgroundService(
             IServiceScopeFactory scopeFactory,
@@ -195,6 +197,13 @@ namespace mes_server.Services
                                 _logger.LogInformation("⚡ [센서 카운트 +1] 설비: {EqId}, Lot: {LotId}, 누적가동: {Sec}초",
                                     equipment.EquipmentID, lotId, equipment.TotalRunningSeconds);
                             }
+
+                            // 💡 3. 5분마다 (또는 최초 1회) 당일 DailyEquipmentProduction (일별 OEE) 자동 집계 및 UPSERT
+                            if ((DateTime.Now - _lastDailySyncTime).TotalMinutes >= 5)
+                            {
+                                await SyncDailyEquipmentProductionAsync(dbContext, stoppingToken);
+                                _lastDailySyncTime = DateTime.Now;
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -202,8 +211,106 @@ namespace mes_server.Services
                         _logger.LogError(ex, "⚠️ 센서 백그라운드 서비스 동작 중 예외 발생 (스킵 후 다음 주기 재시도)");
                     }
                 }
-                                                                                                                   
+
                 await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), stoppingToken);
+            }
+        }
+
+        /// <summary>
+        /// 당일(Today) 기준 설비별 실적 및 가동/비가동시간을 집계하여 DailyEquipmentProduction 테이블에 UPSERT.
+        /// 자정 12시가 지나 날짜가 바뀌면 자동으로 0분/0개부터 새로운 일자(WorkDate) 행이 생성됩니다.
+        /// </summary>
+        private async Task SyncDailyEquipmentProductionAsync(MESDbContext dbContext, CancellationToken stoppingToken)
+        {
+            try
+            {
+                var today = DateOnly.FromDateTime(DateTime.Now);
+                var todayStart = DateTime.Now.Date;
+                var todayEnd = todayStart.AddDays(1);
+
+                var equipments = await dbContext.Equipments.ToListAsync(stoppingToken);
+
+                foreach (var eq in equipments)
+                {
+                    // 1. 오늘 날짜(Today)의 생산 실적 수량 집계 (양품, 불량)
+                    var eqLotIds = await dbContext.Lots
+                        .Where(l => eq.CurrentLotId == l.LotID || l.LotID.Contains(eq.EquipmentID))
+                        .Select(l => l.LotID)
+                        .ToListAsync(stoppingToken);
+
+                    var todayPerformances = await dbContext.Performances
+                        .Where(p => eqLotIds.Contains(p.LotID) && p.WorkDate >= todayStart && p.WorkDate < todayEnd)
+                        .ToListAsync(stoppingToken);
+
+                    int goodQty = todayPerformances.Sum(p => p.GoodQty);
+                    int defectQty = todayPerformances.Sum(p => p.BadQty);
+                    int totalProducedQty = goodQty + defectQty;
+
+                    // 2. 오늘 날짜(Today)의 비가동시간(분) 계산 (진행 중인 비가동 및 자정 넘김 비가동 정밀 반영)
+                    var todayDowntimes = await dbContext.DowntimeLogs
+                        .Where(d => d.EquipmentID == eq.EquipmentID 
+                                 && d.StartedAt < todayEnd 
+                                 && (d.EndedAt == null || d.EndedAt > todayStart))
+                        .ToListAsync(stoppingToken);
+
+                    int downtimeMinutes = (int)Math.Round(todayDowntimes.Sum(d =>
+                    {
+                        var start = d.StartedAt < todayStart ? todayStart : d.StartedAt;
+                        var end = (d.EndedAt == null || d.EndedAt > todayEnd) ? DateTime.Now : d.EndedAt.Value;
+                        return Math.Max(0, (end - start).TotalMinutes);
+                    }));
+
+                    // 3. 오늘 날짜(Today)의 실가동시간(분) 계산 (당일 실적 횟수 기반 또는 가동시간 계산)
+                    int operatingMinutes = todayPerformances.Count * 3 / 60;
+                    if (operatingMinutes == 0 && eq.Status == EquipmentStatus.Running)
+                    {
+                        operatingMinutes = Math.Max(0, (int)Math.Round((DateTime.Now - todayStart).TotalMinutes) - downtimeMinutes);
+                    }
+
+                    int plannedMinutes = Math.Max(480, operatingMinutes + downtimeMinutes);
+                    decimal idealCycleTime = 0.8m;
+
+                    // 4. DailyEquipmentProduction 테이블에서 (EquipmentID + 오늘날짜 WorkDate) 조회
+                    var dailyRecord = await dbContext.DailyEquipmentProductions
+                        .FirstOrDefaultAsync(d => d.EquipmentID == eq.EquipmentID && d.WorkDate == today, stoppingToken);
+
+                    if (dailyRecord == null)
+                    {
+                        // 새로운 일자(자정 이후 첫 갱신): 0분/0개부터 신규 일자 행 생성
+                        dailyRecord = new DailyEquipmentProduction
+                        {
+                            EquipmentID = eq.EquipmentID,
+                            WorkDate = today,
+                            PlannedProductionMinutes = plannedMinutes,
+                            OperatingMinutes = operatingMinutes,
+                            DowntimeMinutes = downtimeMinutes,
+                            TotalProducedQty = totalProducedQty,
+                            GoodQty = goodQty,
+                            DefectQty = defectQty,
+                            IdealCycleTimeMinutes = idealCycleTime
+                        };
+                        dbContext.DailyEquipmentProductions.Add(dailyRecord);
+                        _logger.LogInformation("📅 [신규 일자 생성] {WorkDate} 설비 {EqId} DailyEquipmentProduction 0분/0개 행 시작", today, eq.EquipmentID);
+                    }
+                    else
+                    {
+                        // 기존 일자 행: 5분마다 최신 누적치로 갱신 (UPDATE)
+                        dailyRecord.PlannedProductionMinutes = plannedMinutes;
+                        dailyRecord.OperatingMinutes = operatingMinutes;
+                        dailyRecord.DowntimeMinutes = downtimeMinutes;
+                        dailyRecord.TotalProducedQty = totalProducedQty;
+                        dailyRecord.GoodQty = goodQty;
+                        dailyRecord.DefectQty = defectQty;
+                        dailyRecord.IdealCycleTimeMinutes = idealCycleTime;
+                    }
+                }
+
+                await dbContext.SaveChangesAsync(stoppingToken);
+                _logger.LogInformation("⏱️ [5분 주기 집계 완료] {WorkDate} DailyEquipmentProduction 테이블 갱신 성공", today);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "⚠️ DailyEquipmentProduction 5분 주기 집계 중 오류 발생");
             }
         }
 

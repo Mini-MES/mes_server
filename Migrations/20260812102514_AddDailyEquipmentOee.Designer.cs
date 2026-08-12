@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using mes_server.Data;
 
@@ -11,9 +12,11 @@ using mes_server.Data;
 namespace mes_server.Migrations
 {
     [DbContext(typeof(MESDbContext))]
-    partial class MESDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812102514_AddDailyEquipmentOee")]
+    partial class AddDailyEquipmentOee
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,13 +25,16 @@ namespace mes_server.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("mes_server.Models.Analytics.DailyEquipmentProduction", b =>
+            modelBuilder.Entity("mes_server.Models.Analytics.DailyEquipmentOee", b =>
                 {
                     b.Property<int>("DailyEquipmentOeeID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DailyEquipmentOeeID"));
+
+                    b.Property<decimal>("AvailabilityRate")
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<int>("DefectQty")
                         .HasColumnType("int");
@@ -44,13 +50,38 @@ namespace mes_server.Migrations
                     b.Property<int>("GoodQty")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("IdealCycleTimeMinutes")
-                        .HasColumnType("decimal(10, 4)");
+                    b.Property<string>("ImportBatchID")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("ImportedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("OeePercentage")
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<int>("OperatingMinutes")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("PerformanceRate")
+                        .HasColumnType("decimal(5,2)");
+
                     b.Property<int>("PlannedProductionMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("QualityRate")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("SourceFileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("SourceRowNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TargetQty")
                         .HasColumnType("int");
 
                     b.Property<int>("TotalProducedQty")
@@ -64,7 +95,7 @@ namespace mes_server.Migrations
                     b.HasIndex("EquipmentID", "WorkDate")
                         .IsUnique();
 
-                    b.ToTable("DailyEquipmentProductions");
+                    b.ToTable("DailyEquipmentOees");
                 });
 
             modelBuilder.Entity("mes_server.Models.History.Performance", b =>
@@ -503,7 +534,7 @@ namespace mes_server.Migrations
                     b.ToTable("WorkOrders");
                 });
 
-            modelBuilder.Entity("mes_server.Models.Analytics.DailyEquipmentProduction", b =>
+            modelBuilder.Entity("mes_server.Models.Analytics.DailyEquipmentOee", b =>
                 {
                     b.HasOne("mes_server.Models.MasterData.Equipment", "Equipment")
                         .WithMany()
