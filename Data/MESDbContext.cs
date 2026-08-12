@@ -33,15 +33,15 @@ namespace mes_server.Data
         public DbSet<Shipment> Shipments { get; set; }
 
         // Analytics (imported snapshots; separate from operational production data)
-        public DbSet<DailyEquipmentOee> DailyEquipmentOees { get; set; }
+        public DbSet<DailyEquipmentProduction> DailyEquipmentProductions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<DailyEquipmentOee>()
+            modelBuilder.Entity<DailyEquipmentProduction>()
                 .HasIndex(o => new { o.EquipmentID, o.WorkDate })
                 .IsUnique();
 
-            modelBuilder.Entity<DailyEquipmentOee>()
+            modelBuilder.Entity<DailyEquipmentProduction>()
                 .HasOne(o => o.Equipment)
                 .WithMany()
                 .HasForeignKey(o => o.EquipmentID)

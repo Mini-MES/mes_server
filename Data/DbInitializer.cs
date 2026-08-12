@@ -34,11 +34,11 @@ namespace mes_server.Data
             {
                 var equipments = new List<Equipment>
                 {
-                    new Equipment { EquipmentID = "CNC01", Name = "CNC 선반 #1 (DOOSAN PUMA 2600)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC01-01", TotalRunningSeconds = 1240320, TotalDowntimeSeconds = 84480, LastStatusChangedAt = DateTime.UtcNow },
-                    new Equipment { EquipmentID = "CNC02", Name = "CNC 선반 #2 (DOOSAN PUMA 2600)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC02-01", TotalRunningSeconds = 1256700, TotalDowntimeSeconds = 68100, LastStatusChangedAt = DateTime.UtcNow },
-                    new Equipment { EquipmentID = "CNC03", Name = "CNC 밀링 #1 (HYUNDAI WIA F500 - 노후)", Status = EquipmentStatus.Stopped, CurrentLotId = "LOT-CNC03-01", TotalRunningSeconds = 1014960, TotalDowntimeSeconds = 309840, LastStatusChangedAt = DateTime.UtcNow },
-                    new Equipment { EquipmentID = "CNC04", Name = "CNC 밀링 #2 (HYUNDAI WIA F500D)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC04-01", TotalRunningSeconds = 1257060, TotalDowntimeSeconds = 67740, LastStatusChangedAt = DateTime.UtcNow },
-                    new Equipment { EquipmentID = "CNC05", Name = "연삭기 (STUDER S33)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC05-01", TotalRunningSeconds = 1209060, TotalDowntimeSeconds = 115740, LastStatusChangedAt = DateTime.UtcNow }
+                    new Equipment { EquipmentID = "CNC01", Name = "CNC 선반 #1 (DOOSAN PUMA 2600)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC01-01", TotalRunningSeconds = 0, TotalDowntimeSeconds = 0, LastStatusChangedAt = DateTime.UtcNow },
+                    new Equipment { EquipmentID = "CNC02", Name = "CNC 선반 #2 (DOOSAN PUMA 2600)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC02-01", TotalRunningSeconds = 0, TotalDowntimeSeconds = 0, LastStatusChangedAt = DateTime.UtcNow },
+                    new Equipment { EquipmentID = "CNC03", Name = "CNC 밀링 #1 (HYUNDAI WIA F500)", Status = EquipmentStatus.Stopped, CurrentLotId = "LOT-CNC03-01", TotalRunningSeconds = 0, TotalDowntimeSeconds = 0, LastStatusChangedAt = DateTime.UtcNow },
+                    new Equipment { EquipmentID = "CNC04", Name = "CNC 밀링 #2 (HYUNDAI WIA F500D)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC04-01", TotalRunningSeconds = 0, TotalDowntimeSeconds = 0, LastStatusChangedAt = DateTime.UtcNow },
+                    new Equipment { EquipmentID = "CNC05", Name = "연삭기 (STUDER S33)", Status = EquipmentStatus.Running, CurrentLotId = "LOT-CNC05-01", TotalRunningSeconds = 0, TotalDowntimeSeconds = 0, LastStatusChangedAt = DateTime.UtcNow }
                 };
                 context.Equipments.AddRange(equipments);
                 context.SaveChanges();
@@ -80,136 +80,44 @@ namespace mes_server.Data
             {
                 var reasons = new List<DowntimeReasonMaster>
                 {
-                    new DowntimeReasonMaster { ReasonCode = "DT-BREAK-SPINDLE", ReasonName = "설비고장 - 스핀들 이상 (주요병목)", Category = "BREAKDOWN", IsActive = true },
-                    new DowntimeReasonMaster { ReasonCode = "DT-BREAK-ELECT", ReasonName = "설비고장 - 전기 계통 이상", Category = "BREAKDOWN", IsActive = true },
-                    new DowntimeReasonMaster { ReasonCode = "DT-SETUP-JIG", ReasonName = "품번교체 - 지그 교체", Category = "SETUP", IsActive = true },
-                    new DowntimeReasonMaster { ReasonCode = "DT-SETUP-PROG", ReasonName = "품번교체 - 프로그램 변경", Category = "SETUP", IsActive = true },
-                    new DowntimeReasonMaster { ReasonCode = "DT-SETUP-TOOL", ReasonName = "품번교체 - 공구 세팅", Category = "SETUP", IsActive = true },
-                    new DowntimeReasonMaster { ReasonCode = "DT-WAIT-MAT", ReasonName = "자재대기 - 자재 불출 지연", Category = "WAITING", IsActive = true },
-                    new DowntimeReasonMaster { ReasonCode = "DT-WAIT-PREV", ReasonName = "자재대기 - 전공정 대기", Category = "WAITING", IsActive = true },
-                    new DowntimeReasonMaster { ReasonCode = "DT-TOOL-CHANGE", ReasonName = "공구교체 - 공구 마모 교체", Category = "TOOL", IsActive = true },
-                    new DowntimeReasonMaster { ReasonCode = "DT-QUAL-ADJ", ReasonName = "품질문제 - 치수 이탈 조치", Category = "QUALITY", IsActive = true }
+                    new DowntimeReasonMaster
+                        {
+                            ReasonCode = "EQ001",
+                            ReasonName = "스핀들 이상",
+                            Category = "설비고장"
+                        },
+                        new DowntimeReasonMaster
+                        {
+                            ReasonCode = "EQ002",
+                            ReasonName = "베어링 마모",
+                            Category = "설비고장"
+                        },
+                        new DowntimeReasonMaster
+                        {
+                            ReasonCode = "TL001",
+                            ReasonName = "공구 세팅",
+                            Category = "공구교체"
+                        },
+                        new DowntimeReasonMaster
+                        {
+                            ReasonCode = "MT001",
+                            ReasonName = "원자재 미입고",
+                            Category = "자재"
+                        },
+                        new DowntimeReasonMaster
+                        {
+                            ReasonCode = "QA001",
+                            ReasonName = "초도품 검사",
+                            Category = "품질"
+                        },
+                        new DowntimeReasonMaster
+                        {
+                            ReasonCode = "PL001",
+                            ReasonName = "프로그램 변경",
+                            Category = "계획"
+                        }
                 };
                 context.DowntimeReasonMasters.AddRange(reasons);
-                context.SaveChanges();
-            }
-
-            // 6. 비가동 내역 (DowntimeLog) - 총 221건 시드 데이터 (DateTimeKind.Utc 적용 및 중첩 방지)
-            if (!context.DowntimeLogs.Any())
-            {
-                var logs = new List<DowntimeLog>();
-                DateTime baseTime = new DateTime(2025, 10, 1, 8, 0, 0, DateTimeKind.Utc);
-
-                // CNC03 (최저 OEE 핵심 병목 설비) - 90건 (5시간 간격, 최대 120분 지속으로 중첩 완전 제거)
-                string[] cnc03Reasons = { "DT-BREAK-SPINDLE", "DT-SETUP-JIG", "DT-WAIT-MAT", "DT-SETUP-PROG", "DT-SETUP-TOOL", "DT-BREAK-ELECT", "DT-WAIT-PREV" };
-                string[] cnc03Memos = {
-                    "스핀들 발열 및 과진동 발생 긴급 정지 점검",
-                    "FG-SFT-100 전용 지그 교체 및 영점 측정",
-                    "자재 불출 지연으로 인한 설비 가동 대기",
-                    "CNC 밀링 가공 프로그램 셋업 및 수정",
-                    "키홈 밀링 엔드밀 세팅 및 위치 측정",
-                    "전기계통 이송센서 누전 긴급 점검",
-                    "1공정 선삭 반제품 공급 대기"
-                };
-
-                for (int i = 0; i < 90; i++)
-                {
-                    int rIdx = i % cnc03Reasons.Length;
-                    int durationMin = (rIdx == 0) ? (35 + (i * 7) % 85) : (15 + (i * 5) % 40); // 15분 ~ 120분
-                    DateTime start = baseTime.AddHours(i * 5).AddMinutes((i * 11) % 30);
-
-                    logs.Add(new DowntimeLog
-                    {
-                        EquipmentID = "CNC03",
-                        StartedAt = start,
-                        EndedAt = start.AddMinutes(durationMin),
-                        DurationSeconds = durationMin * 60,
-                        ReasonCode = cnc03Reasons[rIdx],
-                        OperatorMemo = cnc03Memos[rIdx],
-                        UserID = (i % 2 == 0) ? "operator1" : "operator2"
-                    });
-                }
-
-                // CNC01 - 35건 (7시간 간격)
-                for (int i = 0; i < 35; i++)
-                {
-                    DateTime start = baseTime.AddHours(i * 7).AddMinutes(10);
-                    int durationMin = 10 + (i * 3) % 25;
-                    logs.Add(new DowntimeLog
-                    {
-                        EquipmentID = "CNC01",
-                        StartedAt = start,
-                        EndedAt = start.AddMinutes(durationMin),
-                        DurationSeconds = durationMin * 60,
-                        ReasonCode = (i % 2 == 0) ? "DT-WAIT-MAT" : "DT-TOOL-CHANGE",
-                        OperatorMemo = (i % 2 == 0) ? "원자재 환봉 입고 검사 대기" : "황삭 인서트 팁 교체",
-                        UserID = "operator2"
-                    });
-                }
-
-                // CNC02 - 30건 (8시간 간격)
-                for (int i = 0; i < 30; i++)
-                {
-                    DateTime start = baseTime.AddHours(i * 8).AddMinutes(15);
-                    int durationMin = 10 + (i * 4) % 20;
-                    logs.Add(new DowntimeLog
-                    {
-                        EquipmentID = "CNC02",
-                        StartedAt = start,
-                        EndedAt = start.AddMinutes(durationMin),
-                        DurationSeconds = durationMin * 60,
-                        ReasonCode = (i % 3 == 0) ? "DT-QUAL-ADJ" : "DT-TOOL-CHANGE",
-                        OperatorMemo = (i % 3 == 0) ? "치수 이탈 가공 보정" : "바이트 인서트 팁 교체",
-                        UserID = "operator2"
-                    });
-                }
-
-                // CNC04 - 32건 (7.5시간 간격)
-                for (int i = 0; i < 32; i++)
-                {
-                    DateTime start = baseTime.AddHours(i * 7.5).AddMinutes(20);
-                    int durationMin = 12 + (i * 3) % 30;
-                    logs.Add(new DowntimeLog
-                    {
-                        EquipmentID = "CNC04",
-                        StartedAt = start,
-                        EndedAt = start.AddMinutes(durationMin),
-                        DurationSeconds = durationMin * 60,
-                        ReasonCode = (i % 2 == 0) ? "DT-SETUP-TOOL" : "DT-TOOL-CHANGE",
-                        OperatorMemo = "공구 세팅 및 마모 교체",
-                        UserID = "operator1"
-                    });
-                }
-
-                // CNC05 - 34건 (7.2시간 간격)
-                for (int i = 0; i < 34; i++)
-                {
-                    DateTime start = baseTime.AddHours(i * 7.2).AddMinutes(25);
-                    int durationMin = 15 + (i * 2) % 35;
-                    logs.Add(new DowntimeLog
-                    {
-                        EquipmentID = "CNC05",
-                        StartedAt = start,
-                        EndedAt = start.AddMinutes(durationMin),
-                        DurationSeconds = durationMin * 60,
-                        ReasonCode = "DT-TOOL-CHANGE",
-                        OperatorMemo = "연삭석 드레싱 및 세팅",
-                        UserID = "operator3"
-                    });
-                }
-
-                context.DowntimeLogs.AddRange(logs);
-                context.SaveChanges();
-
-                // 설비별 TotalDowntimeSeconds를 생성된 시드 DowntimeLog 합계로 동적 업데이트
-                var eqList = context.Equipments.ToList();
-                foreach (var eq in eqList)
-                {
-                    var sumDowntime = context.DowntimeLogs
-                        .Where(d => d.EquipmentID == eq.EquipmentID)
-                        .Sum(d => d.DurationSeconds ?? 0);
-                    eq.TotalDowntimeSeconds = sumDowntime;
-                }
                 context.SaveChanges();
             }
 

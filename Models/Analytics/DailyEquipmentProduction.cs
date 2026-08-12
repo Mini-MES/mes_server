@@ -1,10 +1,12 @@
 using mes_server.Models.MasterData;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace mes_server.Models.Analytics
 {
-    public class DailyEquipmentOee
+    [Index(nameof(EquipmentID), nameof(WorkDate), IsUnique = true)]
+    public class DailyEquipmentProduction
     {
         [Key]
         public int DailyEquipmentOeeID { get; set; }
@@ -13,11 +15,8 @@ namespace mes_server.Models.Analytics
         [MaxLength(50)]
         public string EquipmentID { get; set; } = null!;
 
+        [ForeignKey("EquipmentID")]
         public Equipment? Equipment { get; set; }
-
-        [Required]
-        [StringLength(50)]
-        public string EquipmentName { get; set; } = null!;
 
         [Required]
         public DateOnly WorkDate { get; set; }
