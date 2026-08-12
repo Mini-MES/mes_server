@@ -33,6 +33,7 @@ namespace mes_server.Models.Analytics
 
         public int DefectQty { get; set; }
 
+        [Column(TypeName = "decimal(10, 4)")]
         public decimal IdealCycleTimeMinutes { get; set; }
     }
 }

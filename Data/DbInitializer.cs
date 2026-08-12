@@ -79,44 +79,38 @@ namespace mes_server.Data
             if (!context.DowntimeReasonMasters.Any())
             {
                 var reasons = new List<DowntimeReasonMaster>
-                {
-                    new DowntimeReasonMaster
-                        {
-                            ReasonCode = "EQ001",
-                            ReasonName = "스핀들 이상",
-                            Category = "설비고장"
-                        },
-                        new DowntimeReasonMaster
-                        {
-                            ReasonCode = "EQ002",
-                            ReasonName = "베어링 마모",
-                            Category = "설비고장"
-                        },
-                        new DowntimeReasonMaster
-                        {
-                            ReasonCode = "TL001",
-                            ReasonName = "공구 세팅",
-                            Category = "공구교체"
-                        },
-                        new DowntimeReasonMaster
-                        {
-                            ReasonCode = "MT001",
-                            ReasonName = "원자재 미입고",
-                            Category = "자재"
-                        },
-                        new DowntimeReasonMaster
-                        {
-                            ReasonCode = "QA001",
-                            ReasonName = "초도품 검사",
-                            Category = "품질"
-                        },
-                        new DowntimeReasonMaster
-                        {
-                            ReasonCode = "PL001",
-                            ReasonName = "프로그램 변경",
-                            Category = "계획"
-                        }
-                };
+                    {
+                        // ===== 설비고장 =====
+                        new() { ReasonCode = "EQ001", ReasonName = "베어링 마모", Category = "설비고장", IsActive = true },
+                        new() { ReasonCode = "EQ002", ReasonName = "블록 원인 분석", Category = "설비고장", IsActive = true },
+                        new() { ReasonCode = "EQ003", ReasonName = "센서 불량", Category = "설비고장", IsActive = true },
+                        new() { ReasonCode = "EQ004", ReasonName = "스핀들 이상", Category = "설비고장", IsActive = true },
+                        new() { ReasonCode = "EQ005", ReasonName = "유압 누유", Category = "설비고장", IsActive = true },
+                        new() { ReasonCode = "EQ006", ReasonName = "전기 계통 이상", Category = "설비고장", IsActive = true },
+
+                        // ===== 공구/셋업 =====
+                        new() { ReasonCode = "TL001", ReasonName = "공구 세팅", Category = "공구교체", IsActive = true },
+                        new() { ReasonCode = "TL002", ReasonName = "드릴 교체", Category = "공구교체", IsActive = true },
+                        new() { ReasonCode = "TL003", ReasonName = "엔드밀 교체", Category = "공구교체", IsActive = true },
+                        new() { ReasonCode = "TL004", ReasonName = "연삭휠 교체", Category = "공구교체", IsActive = true },
+                        new() { ReasonCode = "TL005", ReasonName = "인서트 교체", Category = "공구교체", IsActive = true },
+                        new() { ReasonCode = "TL006", ReasonName = "지그 교체", Category = "공구교체", IsActive = true },
+
+                        // ===== 자재 =====
+                        new() { ReasonCode = "MT001", ReasonName = "원자재 미입고", Category = "자재", IsActive = true },
+                        new() { ReasonCode = "MT002", ReasonName = "자재 불출 지연", Category = "자재", IsActive = true },
+
+                        // ===== 생산대기 =====
+                        new() { ReasonCode = "WT001", ReasonName = "전공정 대기", Category = "대기", IsActive = true },
+
+                        // ===== 품질 =====
+                        new() { ReasonCode = "QA001", ReasonName = "재가공", Category = "품질", IsActive = true },
+                        new() { ReasonCode = "QA002", ReasonName = "초도품 검사", Category = "품질", IsActive = true },
+                        new() { ReasonCode = "QA003", ReasonName = "치수 이탈 조치", Category = "품질", IsActive = true },
+
+                        // ===== 계획 =====
+                        new() { ReasonCode = "PL001", ReasonName = "프로그램 변경", Category = "계획", IsActive = true }
+                    };
                 context.DowntimeReasonMasters.AddRange(reasons);
                 context.SaveChanges();
             }
