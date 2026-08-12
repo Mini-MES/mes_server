@@ -56,6 +56,7 @@ namespace mes_server
             builder.Services.AddHttpClient<GeminiApiService>();
             builder.Services.AddScoped<AiPromptBuilder>();
             builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
+            builder.Services.AddScoped<IExcelImportSerivce, ExcelImportService>();
 
             builder.Services.AddCors(options =>
             {
