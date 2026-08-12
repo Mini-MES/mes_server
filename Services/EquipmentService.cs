@@ -287,23 +287,44 @@ namespace mes_server.Services
                 .ThenBy(d => d.EquipmentID)
                 .ToListAsync();
 
-            return list.Select(d => new DailyEquipmentProductionDto
+            return list.Select(d =>
             {
-                DailyEquipmentOeeID = d.DailyEquipmentOeeID,
-                WorkDate = d.WorkDate,
-                EquipmentID = d.EquipmentID,
-                EquipmentName = d.Equipment?.Name ?? d.EquipmentID,
-                PlannedProductionMinutes = d.PlannedProductionMinutes,
-                OperatingMinutes = d.OperatingMinutes,
-                DowntimeMinutes = d.DowntimeMinutes,
-                TotalProducedQty = d.TotalProducedQty,
-                GoodQty = d.GoodQty,
-                DefectQty = d.DefectQty,
-                IdealCycleTimeMinutes = d.IdealCycleTimeMinutes,
-                AvailabilityRate = d.AvailabilityRate,
-                PerformanceRate = d.PerformanceRate,
-                QualityRate = d.QualityRate,
-                OeePercentage = d.OeePercentage
+                // 1. 시간 가동률 (%) = 실가동시간 / 계획가동시간 * 100
+                double availability = d.PlannedProductionMinutes > 0
+                    ? Math.Min(100.0, Math.Round((double)d.OperatingMinutes / d.PlannedProductionMinutes * 100.0, 1))
+                    : 0.0;
+
+                // 2. 성능 효율 (%) = (생산수량 * 이론 사이클타임) / 실가동시간 * 100
+                double performance = d.OperatingMinutes > 0
+                    ? Math.Min(100.0, Math.Round(((double)d.IdealCycleTimeMinutes * d.TotalProducedQty) / d.OperatingMinutes * 100.0, 1))
+                    : 0.0;
+
+                // 3. 양품률 (%) = 양품수량 / 총생산수량 * 100
+                double quality = d.TotalProducedQty > 0
+                    ? Math.Round((double)d.GoodQty / d.TotalProducedQty * 100.0, 1)
+                    : 100.0;
+
+                // 4. 설비 종합 효율 OEE (%) = 가동률 * 성능효율 * 양품률 / 10,000
+                double oee = Math.Round((availability * performance * quality) / 10000.0, 1);
+
+                return new DailyEquipmentProductionDto
+                {
+                    DailyEquipmentOeeID = d.DailyEquipmentOeeID,
+                    WorkDate = d.WorkDate,
+                    EquipmentID = d.EquipmentID,
+                    EquipmentName = d.Equipment?.Name ?? d.EquipmentID,
+                    PlannedProductionMinutes = d.PlannedProductionMinutes,
+                    OperatingMinutes = d.OperatingMinutes,
+                    DowntimeMinutes = d.DowntimeMinutes,
+                    TotalProducedQty = d.TotalProducedQty,
+                    GoodQty = d.GoodQty,
+                    DefectQty = d.DefectQty,
+                    IdealCycleTimeMinutes = d.IdealCycleTimeMinutes,
+                    AvailabilityRate = availability,
+                    PerformanceRate = performance,
+                    QualityRate = quality,
+                    OeePercentage = oee
+                };
             });
         }
     }
