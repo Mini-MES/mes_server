@@ -1,5 +1,6 @@
 using mes_server.Data;
 using mes_server.Hubs;
+using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.SignalR;
@@ -14,19 +15,18 @@ namespace mes_server.Services
         private readonly IHubContext<MesHub> _hubContext;
         private readonly ILogger<OpcUaBackgroundService> _logger;
 
-        // 원본 OPC UA 변수 값 캐시 (Sinusoid, Square, Counter)
         private double _latestSinusoid = 0.0;
-        private int _latestSquare = 1;
         private int _latestCounter = 0;
+        private int _lastProcessedCounter = -1;
 
-        // CNC01 ~ CNC05 설비별 특성 오프셋 설정 (온도 가공, 생산 속도, 상태 차별화)
-        private readonly (string Id, double BaseTemp, double TempMulti, double CountMulti, string? FixedStatus)[] _cncProfiles = new[]
+        // CNC01 ~ CNC05 설비 및 공정 ID 매핑 (ProcessID: 2=선삭, 3=밀링, 5=연삭)
+        private readonly (string Id, int ProcessId, double BaseTemp, double TempMulti)[] _cncProfiles = new[]
         {
-            ("CNC01", 65.0, 15.0, 1.0,  (string?)null),                // CNC 선반 #1 (메인 가동)
-            ("CNC02", 62.0, 13.0, 0.95, (string?)null),                // CNC 선반 #2
-            ("CNC03", 58.0, 10.0, 0.0,  EquipmentStatus.Stopped),      // CNC 밀링 #1 (정지/정비 중)
-            ("CNC04", 67.0, 16.0, 1.05, (string?)null),                // CNC 밀링 #2 (고속 가동)
-            ("CNC05", 55.0, 8.0,  0.8,  (string?)null)                 // 연삭기
+            ("CNC01", 2, 65.0, 15.0), // CNC 선삭 #1 (공정 2)
+            ("CNC02", 2, 62.0, 13.0), // CNC 선삭 #2 (공정 2)
+            ("CNC03", 3, 58.0, 10.0), // CNC 밀링 #1 (공정 3)
+            ("CNC04", 3, 67.0, 16.0), // CNC 밀링 #2 (공정 3)
+            ("CNC05", 5, 55.0, 8.0)   // 연삭기 (공정 5)
         };
 
         public OpcUaBackgroundService(
@@ -43,7 +43,7 @@ namespace mes_server.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("🚀 [5대 핵심 설비 CNC01~CNC05 OPC UA 연동 서비스] 가동 시작");
+            _logger.LogInformation("🚀 [공정 흐름 연동형 스마트 OPC UA 서비스] 가동 시작");
 
             _opcUaService.OnDataReceived += async (tagName, value, timestamp) =>
             {
@@ -61,14 +61,6 @@ namespace mes_server.Services
                             }
                             break;
 
-                        case "Square":
-                            if (int.TryParse(value?.ToString(), out int qVal))
-                            {
-                                _latestSquare = qVal;
-                                isUpdated = true;
-                            }
-                            break;
-
                         case "Counter":
                             if (int.TryParse(value?.ToString(), out int cVal))
                             {
@@ -78,43 +70,14 @@ namespace mes_server.Services
                             break;
                     }
 
-                    // 수치 수신 시 CNC01 ~ CNC05 전체 5대 설비 텔레메트리 리스트 생성
                     if (isUpdated)
                     {
-                        var telemetryList = new List<object>();
-                        var runningStatusMap = new Dictionary<string, string>();
-
-                        foreach (var profile in _cncProfiles)
-                        {
-                            double temp = Math.Round(profile.BaseTemp + (_latestSinusoid * profile.TempMulti), 1);
-                            string status = profile.FixedStatus 
-                                ?? (_latestSquare == 1 ? EquipmentStatus.Running : EquipmentStatus.Idle);
-                            int count = (int)(_latestCounter * profile.CountMulti);
-
-                            runningStatusMap[profile.Id] = status;
-
-                            telemetryList.Add(new
-                            {
-                                EquipmentId = profile.Id,
-                                Temperature = temp,
-                                Status = status,
-                                TotalCount = count,
-                                Timestamp = timestamp
-                            });
-                        }
-
-                        // DB 내 CNC01 ~ CNC05 설비 상태 동괄 업데이트
-                        await UpdateAllEquipmentStatusesInDbAsync(runningStatusMap, stoppingToken);
-
-                        // SignalR로 5대 설비 전체 텔레메트리 발송
-                        await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetryList, stoppingToken);
-                        
-                        _logger.LogInformation("📡 [5대 설비 전체 텔레메트리 전송] CNC01~CNC05 데이터 브로드캐스트 완료");
+                        await ProcessProcessRoutingAndTelemetryAsync(timestamp, stoppingToken);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "⚠️ CNC01~CNC05 텔레메트리 처리 중 오류 발생");
+                    _logger.LogError(ex, "⚠️ 공정 연동 OPC UA 처리 중 오류 발생");
                 }
             };
 
@@ -128,37 +91,91 @@ namespace mes_server.Services
             await _opcUaService.DisconnectAsync();
         }
 
-        // DB 내 CNC01 ~ CNC05 5대 설비 상태 동괄 업데이트
-        private async Task UpdateAllEquipmentStatusesInDbAsync(Dictionary<string, string> statusMap, CancellationToken ct)
+        private async Task ProcessProcessRoutingAndTelemetryAsync(DateTime timestamp, CancellationToken ct)
         {
-            try
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<MESDbContext>();
+
+            var dbEquipments = await dbContext.Equipments.ToDictionaryAsync(e => e.EquipmentID, ct);
+            var activeLots = await dbContext.Lots
+                .Where(l => l.Status == mes_server.Models.Enum.LotStatus.WIP || l.Status == mes_server.Models.Enum.LotStatus.RELEASED)
+                .ToListAsync(ct);
+
+            bool isCounterIncreased = (_latestCounter != _lastProcessedCounter && _lastProcessedCounter != -1);
+            if (_lastProcessedCounter == -1) _lastProcessedCounter = _latestCounter;
+
+            var telemetryList = new List<object>();
+
+            foreach (var profile in _cncProfiles)
             {
-                using var scope = _scopeFactory.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<MESDbContext>();
+                dbEquipments.TryGetValue(profile.Id, out var eq);
+                string dbStatus = eq?.Status ?? EquipmentStatus.Running;
 
-                var equipments = await dbContext.Equipments.ToListAsync(ct);
-                bool isChanged = false;
+                // 1. 온도는 설비 가동 유무 상관없이 OPC UA 신호에 따라 실시간 쏴줌
+                double temp = (dbStatus == EquipmentStatus.Running)
+                    ? Math.Round(profile.BaseTemp + (_latestSinusoid * profile.TempMulti), 1)
+                    : Math.Round(25.0 + (_latestSinusoid * 1.5), 1);
 
-                foreach (var eq in equipments)
+                // 2. 해당 설비 공정(ProcessId)을 현재 통과 중인 active LOT 조회
+                var activeLotInProcess = activeLots.FirstOrDefault(l => l.CurrentProcessID == profile.ProcessId);
+
+                // 3. Counter 펄스 증가 시 + 설비 가동(RUNNING) 중 + 해당 공정을 지나가는 LOT가 있을 때만 DB 양품 실적(+1) 생성
+                if (isCounterIncreased && dbStatus == EquipmentStatus.Running && activeLotInProcess != null)
                 {
-                    if (statusMap.TryGetValue(eq.EquipmentID, out string? newStatus) && eq.Status != newStatus)
+                    var perf = new Performance
                     {
-                        eq.Status = newStatus;
-                        eq.LastStatusChangedAt = DateTime.UtcNow;
-                        isChanged = true;
+                        WorkOrderID = activeLotInProcess.OrderID,
+                        LotID = activeLotInProcess.LotID,
+                        ProcessID = profile.ProcessId,
+                        UserID = "operator1",
+                        InputQty = 1,
+                        GoodQty = 1,
+                        BadQty = 0,
+                        WorkDate = DateTime.Now
+                    };
+                    dbContext.Performances.Add(perf);
+
+                    if (eq != null)
+                    {
+                        eq.TotalRunningSeconds += 3;
                     }
+
+                    _logger.LogInformation("✨ [양품 실적 적재] 설비 [{EqId}] (공정 {ProcessId}) ➔ LOT [{LotId}] 양품 1개 생산 완료!",
+                        profile.Id, profile.ProcessId, activeLotInProcess.LotID);
                 }
 
-                if (isChanged)
+                // DB 상 해당 설비의 실제 양품 적재 수량 조회
+                int totalProdQty = 0;
+                if (eq != null)
                 {
-                    await dbContext.SaveChangesAsync(ct);
-                    _logger.LogInformation("💾 [DB 동괄 갱신 완료] CNC01~CNC05 설비 상태 업데이트 저장 성공");
+                    var eqLotIds = activeLots
+                        .Where(l => eq.CurrentLotId == l.LotID || l.LotID.Contains(eq.EquipmentID))
+                        .Select(l => l.LotID)
+                        .ToList();
+
+                    totalProdQty = await dbContext.Performances
+                        .Where(p => eqLotIds.Contains(p.LotID))
+                        .SumAsync(p => p.GoodQty, ct);
                 }
+
+                telemetryList.Add(new
+                {
+                    EquipmentId = profile.Id,
+                    Temperature = temp,
+                    Status = dbStatus,
+                    TotalCount = totalProdQty,
+                    Timestamp = timestamp
+                });
             }
-            catch (Exception ex)
+
+            if (isCounterIncreased)
             {
-                _logger.LogError(ex, "⚠️ DB 설비 상태 전체 동괄 업데이트 실패");
+                _lastProcessedCounter = _latestCounter;
+                await dbContext.SaveChangesAsync(ct);
             }
+
+            // SignalR로 실시간 텔레메트리 송신
+            await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetryList, ct);
         }
     }
 }
