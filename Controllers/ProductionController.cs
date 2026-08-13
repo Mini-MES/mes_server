@@ -75,6 +75,23 @@ namespace mes_server.Controllers
             try
             {
                 var result = await _productionService.StartProductionAsync(orderId);
+
+                try
+                {
+                    await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { orderId, status = "InProgress" });
+                    await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId = result, status = "WIP" });
+                    await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new
+                    {
+                        equipmentID = "CNC01",
+                        status = "RUNNING",
+                        currentLotID = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "SignalR StartProduction 방송 실패 (DB 처리는 정상)");
+                }
+
                 return Ok(new { Message = "생산이 성공적으로 시작되었습니다.", data = result });
             }
             catch (InvalidOperationException ex)

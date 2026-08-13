@@ -150,15 +150,12 @@ namespace mes_server.Services
             _session.AddSubscription(subscription);
             await subscription.CreateAsync();
             await subscription.SetPublishingModeAsync(true);
-
-            _logger.LogInformation("📡 MES 핵심 태그 구독 등록 완료! (Counter, Sinusoid, Square)");
         }
 
         public async Task DisconnectAsync()
         {
             if (_session != null)
             {
-                _logger.LogInformation("🔌 OPC UA 세션 종료 중...");
                 await _session.CloseAsync();
                 _session.Dispose();
                 _session = null;

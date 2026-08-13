@@ -245,6 +245,40 @@ namespace mes_server.Services
                 }
             }
 
+            var targetEquipmentId = perf.ProcessID == 3 ? "CNC03" : (perf.ProcessID == 5 ? "CNC05" : "CNC01");
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var daily = await _context.DailyEquipmentProductions
+                .FirstOrDefaultAsync(d => d.EquipmentID == targetEquipmentId && d.WorkDate == today);
+
+            var eq = await _context.Equipments.FirstOrDefaultAsync(e => e.EquipmentID == targetEquipmentId);
+            int runningMin = (eq != null) ? (int)(eq.TotalRunningSeconds / 60) : 0;
+            int downMin = (eq != null) ? (int)(eq.TotalDowntimeSeconds / 60) : 0;
+
+            if (daily == null)
+            {
+                daily = new mes_server.Models.Analytics.DailyEquipmentProduction
+                {
+                    EquipmentID = targetEquipmentId,
+                    WorkDate = today,
+                    PlannedProductionMinutes = 480,
+                    OperatingMinutes = Math.Max(1, runningMin),
+                    DowntimeMinutes = downMin,
+                    TotalProducedQty = perf.GoodQty + perf.BadQty,
+                    GoodQty = perf.GoodQty,
+                    DefectQty = perf.BadQty,
+                    IdealCycleTimeMinutes = 0.5m
+                };
+                _context.DailyEquipmentProductions.Add(daily);
+            }
+            else
+            {
+                daily.GoodQty += perf.GoodQty;
+                daily.DefectQty += perf.BadQty;
+                daily.TotalProducedQty += (perf.GoodQty + perf.BadQty);
+                daily.OperatingMinutes = Math.Max(daily.OperatingMinutes, runningMin);
+                daily.DowntimeMinutes = downMin;
+            }
+
             await _context.SaveChangesAsync();
 
             return perf;

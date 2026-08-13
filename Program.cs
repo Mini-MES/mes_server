@@ -57,7 +57,7 @@ namespace mes_server
             builder.Services.AddScoped<AiPromptBuilder>();
             builder.Services.AddSingleton<IOpcUaService, OpcUaService>();
             builder.Services.AddHostedService<OpcUaBackgroundService>();
-            builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
+            // builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>
             {
@@ -159,21 +159,6 @@ namespace mes_server
                 });
 
             var app = builder.Build();
-
-            using (var scope = app.Services.CreateScope())
-            {
-                var services = scope.ServiceProvider;
-                try
-                {
-                    var context = services.GetRequiredService<MESDbContext>();
-                    DbInitializer.Initialize(context);
-                }
-                catch (Exception ex)
-                {
-                    var logger = services.GetRequiredService<ILogger<Program>>();
-                    logger.LogError(ex, "An error occurred while seeding the database.");
-                }
-            }
 
             // 미들웨어 등록 (순서 중요)
             app.UseCors("AllowAll");

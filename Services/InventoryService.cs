@@ -48,14 +48,21 @@ namespace mes_server.Services
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
             if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
             
-            var boms = await _bomRepository.FindAsync(b => b.ProcessID == processId || (b.ProductID == workOrder.ProductID && b.ProcessID == processId));
+            var allBoms = await _bomRepository.FindAsync(b => b.ProductID == workOrder.ProductID);
+            
+            var targetBoms = allBoms.Where(b => b.ProcessID == processId).ToList();
+            if (!targetBoms.Any() && (processId == 1 || processId == 2))
+            {
+                targetBoms = allBoms.ToList();
+            }
 
-            foreach (var bom in boms)
+            foreach (var bom in targetBoms)
             {
                 var product = await _productRepository.GetByIdAsync(bom.ChildProductID);
                 if (product == null) continue;
 
-                product.StockQty -= (bom.RequiredQty * productionQty);
+                int deductQty = bom.RequiredQty * productionQty;
+                product.StockQty = Math.Max(0, product.StockQty - deductQty);
             }
             await _context.SaveChangesAsync();
         }
