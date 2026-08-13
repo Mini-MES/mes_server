@@ -55,6 +55,8 @@ namespace mes_server
             builder.Services.AddScoped<IEquipmentService, EquipmentService>();
             builder.Services.AddHttpClient<GeminiApiService>();
             builder.Services.AddScoped<AiPromptBuilder>();
+            builder.Services.AddSingleton<IOpcUaService, OpcUaService>();
+            builder.Services.AddHostedService<OpcUaBackgroundService>();
             builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>
