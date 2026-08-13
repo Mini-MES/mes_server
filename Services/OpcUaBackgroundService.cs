@@ -14,10 +14,20 @@ namespace mes_server.Services
         private readonly IHubContext<MesHub> _hubContext;
         private readonly ILogger<OpcUaBackgroundService> _logger;
 
-        // MES 텔레메트리 최신 상태 데이터 (온도, 상태, 누적 수량)
-        private double _currentTemperature = 65.0;
-        private string _currentStatus = EquipmentStatus.Running;
-        private int _totalCount = 0;
+        // 원본 OPC UA 변수 값 캐시 (Sinusoid, Square, Counter)
+        private double _latestSinusoid = 0.0;
+        private int _latestSquare = 1;
+        private int _latestCounter = 0;
+
+        // CNC01 ~ CNC05 설비별 특성 오프셋 설정 (온도 가공, 생산 속도, 상태 차별화)
+        private readonly (string Id, double BaseTemp, double TempMulti, double CountMulti, string? FixedStatus)[] _cncProfiles = new[]
+        {
+            ("CNC01", 65.0, 15.0, 1.0,  (string?)null),                // CNC 선반 #1 (메인 가동)
+            ("CNC02", 62.0, 13.0, 0.95, (string?)null),                // CNC 선반 #2
+            ("CNC03", 58.0, 10.0, 0.0,  EquipmentStatus.Stopped),      // CNC 밀링 #1 (정지/정비 중)
+            ("CNC04", 67.0, 16.0, 1.05, (string?)null),                // CNC 밀링 #2 (고속 가동)
+            ("CNC05", 55.0, 8.0,  0.8,  (string?)null)                 // 연삭기
+        };
 
         public OpcUaBackgroundService(
             IOpcUaService opcUaService,
@@ -33,74 +43,81 @@ namespace mes_server.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("🚀 [OPC UA 백그라운드 MES 연동 서비스] 가동 시작");
+            _logger.LogInformation("🚀 [5대 핵심 설비 CNC01~CNC05 OPC UA 연동 서비스] 가동 시작");
 
-            // OPC UA 수신 ➔ MES 변환 ➔ DB & SignalR 브로드캐스트
             _opcUaService.OnDataReceived += async (tagName, value, timestamp) =>
             {
                 try
                 {
-                    bool isDataUpdated = false;
+                    bool isUpdated = false;
 
                     switch (tagName)
                     {
-                        // 1. Sinusoid ➔ 설비 온도 (65°C ± 15°C 변동)
                         case "Sinusoid":
-                            if (double.TryParse(value?.ToString(), out double sinVal))
+                            if (double.TryParse(value?.ToString(), out double sVal))
                             {
-                                _currentTemperature = Math.Round(65.0 + (sinVal * 15.0), 1);
-                                isDataUpdated = true;
+                                _latestSinusoid = sVal;
+                                isUpdated = true;
                             }
                             break;
 
-                        // 2. Square ➔ 설비 가동/대기 상태 (1: RUNNING, 0: IDLE)
                         case "Square":
-                            if (int.TryParse(value?.ToString(), out int sqVal))
+                            if (int.TryParse(value?.ToString(), out int qVal))
                             {
-                                string newStatus = sqVal == 1 ? EquipmentStatus.Running : EquipmentStatus.Idle;
-                                if (_currentStatus != newStatus)
-                                {
-                                    _currentStatus = newStatus;
-                                    await UpdateEquipmentStatusInDbAsync(_currentStatus, stoppingToken);
-                                }
-                                isDataUpdated = true;
+                                _latestSquare = qVal;
+                                isUpdated = true;
                             }
                             break;
 
-                        // 3. Counter ➔ 누적 생산 수량
                         case "Counter":
-                            if (int.TryParse(value?.ToString(), out int cntVal))
+                            if (int.TryParse(value?.ToString(), out int cVal))
                             {
-                                _totalCount = cntVal;
-                                isDataUpdated = true;
+                                _latestCounter = cVal;
+                                isUpdated = true;
                             }
                             break;
                     }
 
-                    // 변동 발생 시 SignalR(MesHub)로 실시간 MES 텔레메트리 발송
-                    if (isDataUpdated)
+                    // 수치 수신 시 CNC01 ~ CNC05 전체 5대 설비 텔레메트리 리스트 생성
+                    if (isUpdated)
                     {
-                        var telemetryPayload = new
-                        {
-                            EquipmentId = "EQ-001",
-                            Temperature = _currentTemperature,
-                            Status = _currentStatus,
-                            TotalCount = _totalCount,
-                            Timestamp = timestamp
-                        };
+                        var telemetryList = new List<object>();
+                        var runningStatusMap = new Dictionary<string, string>();
 
-                        await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetry", telemetryPayload, stoppingToken);
-                        _logger.LogInformation("📡 [MES 텔레메트리 전송] EQ-001 | 온도: {Temp}°C | 상태: {Status} | 생산수량: {Count}개",
-                            _currentTemperature, _currentStatus, _totalCount);
+                        foreach (var profile in _cncProfiles)
+                        {
+                            double temp = Math.Round(profile.BaseTemp + (_latestSinusoid * profile.TempMulti), 1);
+                            string status = profile.FixedStatus 
+                                ?? (_latestSquare == 1 ? EquipmentStatus.Running : EquipmentStatus.Idle);
+                            int count = (int)(_latestCounter * profile.CountMulti);
+
+                            runningStatusMap[profile.Id] = status;
+
+                            telemetryList.Add(new
+                            {
+                                EquipmentId = profile.Id,
+                                Temperature = temp,
+                                Status = status,
+                                TotalCount = count,
+                                Timestamp = timestamp
+                            });
+                        }
+
+                        // DB 내 CNC01 ~ CNC05 설비 상태 동괄 업데이트
+                        await UpdateAllEquipmentStatusesInDbAsync(runningStatusMap, stoppingToken);
+
+                        // SignalR로 5대 설비 전체 텔레메트리 발송
+                        await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetryList, stoppingToken);
+                        
+                        _logger.LogInformation("📡 [5대 설비 전체 텔레메트리 전송] CNC01~CNC05 데이터 브로드캐스트 완료");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "⚠️ OPC UA 수신 데이터 처리 중 오류 발생");
+                    _logger.LogError(ex, "⚠️ CNC01~CNC05 텔레메트리 처리 중 오류 발생");
                 }
             };
 
-            // 연결 및 구독 시작
             await _opcUaService.ConnectAndSubscribeAsync();
 
             while (!stoppingToken.IsCancellationRequested)
@@ -111,26 +128,36 @@ namespace mes_server.Services
             await _opcUaService.DisconnectAsync();
         }
 
-        // DB 내 첫 번째 설비 상태 자동 갱신
-        private async Task UpdateEquipmentStatusInDbAsync(string newStatus, CancellationToken ct)
+        // DB 내 CNC01 ~ CNC05 5대 설비 상태 동괄 업데이트
+        private async Task UpdateAllEquipmentStatusesInDbAsync(Dictionary<string, string> statusMap, CancellationToken ct)
         {
             try
             {
                 using var scope = _scopeFactory.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<MESDbContext>();
 
-                var equipment = await dbContext.Equipments.FirstOrDefaultAsync(ct);
-                if (equipment != null)
+                var equipments = await dbContext.Equipments.ToListAsync(ct);
+                bool isChanged = false;
+
+                foreach (var eq in equipments)
                 {
-                    equipment.Status = newStatus;
-                    equipment.LastStatusChangedAt = DateTime.UtcNow;
+                    if (statusMap.TryGetValue(eq.EquipmentID, out string? newStatus) && eq.Status != newStatus)
+                    {
+                        eq.Status = newStatus;
+                        eq.LastStatusChangedAt = DateTime.UtcNow;
+                        isChanged = true;
+                    }
+                }
+
+                if (isChanged)
+                {
                     await dbContext.SaveChangesAsync(ct);
-                    _logger.LogInformation("💾 [DB 갱신 완료] 설비 [{EqId}] 상태 변경 -> {Status}", equipment.EquipmentID, newStatus);
+                    _logger.LogInformation("💾 [DB 동괄 갱신 완료] CNC01~CNC05 설비 상태 업데이트 저장 성공");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "⚠️ DB 설비 상태 업데이트 실패");
+                _logger.LogError(ex, "⚠️ DB 설비 상태 전체 동괄 업데이트 실패");
             }
         }
     }
