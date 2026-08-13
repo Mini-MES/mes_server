@@ -26,11 +26,10 @@ namespace mes_server.Services
             try
             {
                 var serverUrl = _configuration["OpcUa:ServerUrl"] 
-                    ?? _configuration["OpcUa:ServerURL"] 
                     ?? "opc.tcp://uademo.prosysopc.com:53530/OPCUA/SimulationServer";
                 var appName = _configuration["OpcUa:ApplicationName"] ?? "MiniMES_OpcUaClient";
 
-                _logger.LogInformation("OPC UA 데모 서버 연결 시도: {ServerUrl}", serverUrl);
+                _logger.LogInformation("🔌 OPC UA 서버 연결 시도: {ServerUrl}", serverUrl);
 
                 var config = new ApplicationConfiguration()
                 {
@@ -76,7 +75,7 @@ namespace mes_server.Services
 
                 config.CertificateValidator.CertificateValidation += (s, e) =>
                 {
-                    e.Accept = true; // 데모 서버 자동 수락
+                    e.Accept = true;
                 };
 
                 var selectedEndpoint = CoreClientUtils.SelectEndpoint(config, serverUrl, useSecurity: false);
@@ -94,12 +93,12 @@ namespace mes_server.Services
                     preferredLocales: null
                 );
 
-                _logger.LogInformation("OPC UA 서버 세션 연결 성공!");
+                _logger.LogInformation("✅ OPC UA 서버 세션 연결 성공!");
                 await SubscribeToTagsAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "OPC UA 서버 연결 및 구독 설정 중 오류가 발생했습니다.");
+                _logger.LogError(ex, "❌ OPC UA 서버 연결 중 오류가 발생했습니다.");
                 throw;
             }
         }
@@ -108,30 +107,39 @@ namespace mes_server.Services
         {
             if (_session == null || !_session.Connected) return;
 
-            var subscription = new Subscription(_session.DefaultSubscription)
+            // MES 핵심 3가지 센서 태그만 지정 (Counter: 실적, Sinusoid: 온도, Square: 상태)
+            var targetTags = new (string DisplayName, NodeId NodeId)[]
             {
-                PublishingInterval = 1000 // 1초 주기로 데이터 수집
+                ("Counter",  new NodeId(1001, 3)), // ns=3;i=1001 (생산 누적 수량)
+                ("Sinusoid", new NodeId(1004, 3)), // ns=3;i=1004 (설비 온도)
+                ("Square",   new NodeId(1005, 3))  // ns=3;i=1005 (가동/대기 상태)
             };
 
-            // Prosys Demo Server의 Namespace Index = 2 (ns=2;s=태그명)
-            var targetTags = new[] { "Sawtooth", "Sinusoid", "Random", "Counter" };
+            var subscription = new Subscription(_session.DefaultSubscription)
+            {
+                PublishingInterval = 1000,
+                PublishingEnabled = true
+            };
 
-            foreach (var tagName in targetTags)
+            foreach (var (displayName, nodeId) in targetTags)
             {
                 var item = new MonitoredItem(subscription.DefaultItem)
                 {
-                    DisplayName = tagName,
-                    StartNodeId = new NodeId(tagName, 2)
+                    DisplayName = displayName,
+                    StartNodeId = nodeId,
+                    SamplingInterval = 1000,
+                    QueueSize = 10,
+                    DiscardOldest = true
                 };
 
                 item.Notification += (monitoredItem, e) =>
                 {
-                    foreach (var value in monitoredItem.DequeueValues())
+                    if (e.NotificationValue is MonitoredItemNotification notification && notification.Value != null)
                     {
-                        if (value.Value != null)
+                        var dataValue = notification.Value;
+                        if (dataValue.Value != null)
                         {
-                            _logger.LogInformation("OPC UA 데이터 수신 -> [{TagName}]: {Value}", monitoredItem.DisplayName, value.Value);
-                            OnDataReceived?.Invoke(monitoredItem.DisplayName, value.Value, value.SourceTimestamp);
+                            OnDataReceived?.Invoke(monitoredItem.DisplayName, dataValue.Value, dataValue.SourceTimestamp);
                         }
                     }
                 };
@@ -141,14 +149,16 @@ namespace mes_server.Services
 
             _session.AddSubscription(subscription);
             await subscription.CreateAsync();
-            _logger.LogInformation("OPC UA 태그 구독 등록 완료! (Sawtooth, Sinusoid, Random, Counter)");
+            await subscription.SetPublishingModeAsync(true);
+
+            _logger.LogInformation("📡 MES 핵심 태그 구독 등록 완료! (Counter, Sinusoid, Square)");
         }
 
         public async Task DisconnectAsync()
         {
             if (_session != null)
             {
-                _logger.LogInformation("OPC UA 서버 연결 해제 중...");
+                _logger.LogInformation("🔌 OPC UA 세션 종료 중...");
                 await _session.CloseAsync();
                 _session.Dispose();
                 _session = null;
