@@ -6,6 +6,5 @@ namespace mes_server.Services.AuthSvc
     {
         Task<(string token, string refreshToken)> LoginAsync(LoginDto loginDto);
         Task<(string token, string refreshToken)> RefreshTokenAsync(string token);
-        Task<bool> AuthenticateAsync(string userName, string password);
     }
 }

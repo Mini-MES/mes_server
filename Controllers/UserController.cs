@@ -31,7 +31,7 @@ namespace mes_server.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            var (token, refreshToken) = await _userService.LoginAsync(dto);
+            var (token, refreshToken) = await _authService.LoginAsync(dto);
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions { HttpOnly = true, Secure = true });
             Response.Cookies.Append("token", token, new CookieOptions { HttpOnly = true, Secure = true });
             return Ok(new { Message = "로그인 성공" });
@@ -61,7 +61,7 @@ namespace mes_server.Controllers
         {
             var refreshToken = Request.Cookies["refreshToken"];
             if (string.IsNullOrEmpty(refreshToken)) return BadRequest("Token missing");
-            var newTokens = await _userService.RefreshTokenAsync(refreshToken);
+            var newTokens = await _authService.RefreshTokenAsync(refreshToken);
             Response.Cookies.Append("refreshToken", newTokens.refreshToken, new CookieOptions { HttpOnly = true, Secure = true });
             Response.Cookies.Append("token", newTokens.token, new CookieOptions { HttpOnly = true, Secure = true });
             return Ok(new { Message = "토큰이 성공적으로 갱신되었습니다." });

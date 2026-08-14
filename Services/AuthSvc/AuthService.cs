@@ -21,36 +21,11 @@ namespace mes_server.Services.AuthSvc
             _jwtSettings = jwtOptions.Value;
             _userRepository = userRepository;
         }
-        public string GenerateJwtToken(User user)
-        {
-            var key = Encoding.ASCII.GetBytes(_jwtSettings.Key);
-
-
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.UserID),
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Role, user.UserRole)
-            };
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpireMinutes),
-                Issuer = _jwtSettings.Issuer,
-                Audience = _jwtSettings.Audience,
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
-        }
 
         public async Task<(string token, string refreshToken)> LoginAsync(LoginDto loginDto)
         {
             var user = await _userRepository.GetByUserIDAsync(loginDto.UserID);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+            if (user == null || !await AuthenticateAsync(loginDto.Password, user.PasswordHash))
             {
                 throw new UnauthorizedAccessException("Invalid username or password.");
             }
@@ -82,13 +57,37 @@ namespace mes_server.Services.AuthSvc
             return (newToken, newRefreshToken);
         }
 
-        public async Task<bool> AuthenticateAsync(string userName, string password)
+        private string GenerateJwtToken(User user)
         {
-            var user = await _userRepository.GetByUserNameAsync(userName);
-            if (user == null) return false;
+            var key = Encoding.ASCII.GetBytes(_jwtSettings.Key);
 
-            return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserID),
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.Role, user.UserRole)
+            };
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpireMinutes),
+                Issuer = _jwtSettings.Issuer,
+                Audience = _jwtSettings.Audience,
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
+
+        private async Task<bool> AuthenticateAsync(string password, string passwordHash)
+        {
+            return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+        }
+
         private string GenerateRefreshToken()
         {
             var randomNumber = new byte[32];
