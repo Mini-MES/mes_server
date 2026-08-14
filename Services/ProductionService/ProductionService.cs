@@ -127,31 +127,5 @@ namespace mes_server.Services.ProductionService
             lot.Status = LotStatus.WIP;
             await _lotRepository.SaveChangesAsync();
         }
-
-        private async Task<List<int>> GetAllBomProcessIdsAsync(string productId)
-        {
-            var processIds = new HashSet<int>();
-            var queue = new Queue<string>();
-            queue.Enqueue(productId);
-            var visitedProducts = new HashSet<string> { productId };
-
-            while (queue.Count > 0)
-            {
-                var currentProduct = queue.Dequeue();
-                var boms = await _bomRepository.GetAllBomsByProductIdAsync(productId);
-
-                foreach (var bom in boms)
-                {
-                    processIds.Add(bom.ProcessID);
-                    if (!visitedProducts.Contains(bom.ChildProductID))
-                    {
-                        visitedProducts.Add(bom.ChildProductID);
-                        queue.Enqueue(bom.ChildProductID);
-                    }
-                }
-            }
-
-            return processIds.ToList();
-        }
     }
 }

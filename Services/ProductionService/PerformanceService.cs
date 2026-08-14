@@ -128,22 +128,43 @@ namespace mes_server.Services.ProductionService
         private async Task<int?> GetLastProcessIdForProductAsync(WorkOrder workOrder)
         {
             var processList = await _processMasterRepository.GetAllAsync();
-            var productBoms = await _bomRepository.GetAllBomsByProductIdAsync(workOrder.ProductID);
-            var productProcessIds = productBoms.Select(b => b.ProcessID).Distinct().ToList();
 
-            int? lastProcessId = null;
-            if (productProcessIds.Any())
+            var productProcessIds = await GetAllBomProcessIdsAsync(workOrder.ProductID);
+
+            if (!productProcessIds.Any())
+                throw new InvalidOperationException("제품의 BOM 공정을 찾을 수 없습니다.");
+
+            return processList
+                .Where(p => productProcessIds.Contains(p.ProcessID))
+                .OrderByDescending(p => p.SequenceOrder)
+                .Select(p => (int?)p.ProcessID)
+                .FirstOrDefault();
+        }
+
+        private async Task<List<int>> GetAllBomProcessIdsAsync(string productId)
+        {
+            var processIds = new HashSet<int>();
+            var queue = new Queue<string>();
+            queue.Enqueue(productId);
+            var visitedProducts = new HashSet<string> { productId };
+
+            while (queue.Count > 0)
             {
-                var productProcesses = processList.Where(p => productProcessIds.Contains(p.ProcessID));
-                lastProcessId = productProcesses.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
+                var currentProduct = queue.Dequeue();
+                var boms = await _bomRepository.GetAllBomsByProductIdAsync(currentProduct);
+
+                foreach (var bom in boms)
+                {
+                    processIds.Add(bom.ProcessID);
+                    if (!visitedProducts.Contains(bom.ChildProductID))
+                    {
+                        visitedProducts.Add(bom.ChildProductID);
+                        queue.Enqueue(bom.ChildProductID);
+                    }
+                }
             }
 
-            if (lastProcessId == null)
-            {
-                lastProcessId = processList.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
-            }
-
-            return lastProcessId;
+            return processIds.ToList();
         }
     }
 }

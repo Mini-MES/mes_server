@@ -107,11 +107,11 @@ namespace mes_server.Controllers
             }
         }
 
-        // 생산 상태 조회
+        // 특정 생산에 Performance 조회
         [HttpGet("status/{orderId}")]
         public async Task<IActionResult> GetProductionStatus([FromRoute] int orderId)
         {
-            var result = await _workOrderService.GetWorkOrderByIdAsync(orderId);
+            var result = await _performanceService.GetProductionStatusAsync(orderId);
             return Ok(new { Message = "생산 상태가 성공적으로 조회되었습니다.", data = result });
         }
 
