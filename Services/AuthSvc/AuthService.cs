@@ -2,7 +2,6 @@
 using mes_server.Models.MasterData;
 using mes_server.Models.Settings;
 using mes_server.Repositories.MasterData;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -48,16 +47,6 @@ namespace mes_server.Services.AuthSvc
             return tokenHandler.WriteToken(token);
         }
 
-        private string GenerateRefreshToken()
-        {
-            var randomNumber = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomNumber);
-                return Convert.ToBase64String(randomNumber);
-            }
-        }
-
         public async Task<(string token, string refreshToken)> LoginAsync(LoginDto loginDto)
         {
             var user = await _userRepository.GetByUserIDAsync(loginDto.UserID);
@@ -99,6 +88,15 @@ namespace mes_server.Services.AuthSvc
             if (user == null) return false;
 
             return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+        }
+        private string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                return Convert.ToBase64String(randomNumber);
+            }
         }
     }
 }

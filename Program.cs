@@ -25,6 +25,7 @@ using mes_server.Services.OpcSvc;
 using mes_server.Services.EquipmentSvc;
 using mes_server.Services.Generic;
 using mes_server.Services.AISvc;
+using mes_server.Services.AuthSvc;
 
 namespace mes_server
 {
@@ -65,6 +66,7 @@ namespace mes_server
             builder.Services.AddScoped<AiPromptBuilder>();
             builder.Services.AddSingleton<IOpcUaService, OpcUaService>();
             builder.Services.AddHostedService<OpcUaBackgroundService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
             // builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>

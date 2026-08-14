@@ -1,4 +1,5 @@
 ﻿using mes_server.Models.DTOs.MasterData;
+using mes_server.Services.AuthSvc;
 using mes_server.Services.UserSvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,8 +11,13 @@ namespace mes_server.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly IAuthService _authService;
 
-        public AuthController(IUserService userService) => _userService = userService;
+        public AuthController(IUserService userService, IAuthService authService)
+        {
+            _userService = userService;
+            _authService = authService;
+        }
 
         // 회원가입
         [HttpPost("signup")]
