@@ -24,7 +24,7 @@ namespace mes_server.Services.ProductionService
         private readonly IPerformanceService _performanceService;
         private readonly ILotService _lotService;
 
-        public ProductionService(,
+        public ProductionService(
             IWorkOrderService workOrderService,
             ILotRepository lotRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,

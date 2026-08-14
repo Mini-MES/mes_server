@@ -8,6 +8,7 @@ using mes_server.Repositories.Interface.Generic;
 using mes_server.Repositories.Interface.History;
 using mes_server.Repositories.Interface.MasterData;
 using mes_server.Repositories.Interface.Production;
+using mes_server.Services.EquipmentService;
 using mes_server.Services.Interface;
 using mes_server.Services.InventoryService;
 
@@ -21,12 +22,11 @@ namespace mes_server.Services.ProductionService
         private readonly IGenericRepository<WorkOrder> _workOrderRepository;
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
         private readonly IBOMRepository _bomRepository;
-        private readonly IGenericRepository<DailyEquipmentProduction> _dailyEquipmentProductionRepository;
-        private readonly IGenericRepository<Equipment> _equipmentRepository;
 
         private readonly IWorkOrderService _workOrderService;
         private readonly IInventoryService _inventoryService;
-        private readonly IGenericService<DailyEquipmentProduction> _genericService;
+        private readonly IDailyEquipmentProductionService _dailyEquipmentProductionService;
+
 
 
         public PerformanceService(
@@ -37,8 +37,8 @@ namespace mes_server.Services.ProductionService
             IInventoryService inventoryService, 
             IGenericRepository<ProcessMaster> processMasterRepository, 
             IBOMRepository bomRepository,
-            IGenericRepository<DailyEquipmentProduction> dailyEquipmentProductionRepository,
-            IGenericRepository<Equipment> equipmentRepository)
+            IDailyEquipmentProductionService dailyEquipmentProductionService
+            )
         {
             _performanceRepository = performanceRepository;
             _lotRepository = lotRepository;
@@ -47,8 +47,7 @@ namespace mes_server.Services.ProductionService
             _inventoryService = inventoryService;
             _processMasterRepository = processMasterRepository;
             _bomRepository = bomRepository;
-            _dailyEquipmentProductionRepository = dailyEquipmentProductionRepository;
-            _equipmentRepository = equipmentRepository;
+            _dailyEquipmentProductionService = dailyEquipmentProductionService;
 
         }
 
@@ -103,39 +102,7 @@ namespace mes_server.Services.ProductionService
             }
 
             var targetEquipmentId = perf.ProcessID == 3 ? "CNC03" : (perf.ProcessID == 5 ? "CNC05" : "CNC01");
-            var today = DateOnly.FromDateTime(DateTime.Today);
-            var daily = await _dailyEquipmentProductionRepository.FindAsync(d => d.EquipmentID == targetEquipmentId && d.WorkDate == today);
-
-            var eq = await _equipmentRepository.GetByIdAsync(targetEquipmentId);
-            int runningMin = (eq != null) ? (int)(eq.TotalRunningSeconds / 60) : 0;
-            int downMin = (eq != null) ? (int)(eq.TotalDowntimeSeconds / 60) : 0;
-
-            if (daily == null)
-            {
-                daily = new DailyEquipmentProduction
-                {
-                    EquipmentID = targetEquipmentId,
-                    WorkDate = today,
-                    PlannedProductionMinutes = 960,
-                    OperatingMinutes = Math.Max(1, runningMin),
-                    DowntimeMinutes = downMin,
-                    TotalProducedQty = perf.GoodQty + perf.BadQty,
-                    GoodQty = perf.GoodQty,
-                    DefectQty = perf.BadQty,
-                    IdealCycleTimeMinutes = 0.5m
-                };
-                await _dailyEquipmentProductionRepository.CreateAsync(daily);
-            }
-            else
-            {
-                daily.GoodQty += perf.GoodQty;
-                daily.DefectQty += perf.BadQty;
-                daily.TotalProducedQty += (perf.GoodQty + perf.BadQty);
-                daily.OperatingMinutes = Math.Max(daily.OperatingMinutes, runningMin);
-                daily.DowntimeMinutes = downMin;
-            }
-
-            await _dailyEquipmentProductionRepository.SaveChangesAsync();
+            await _dailyEquipmentProductionService.CreateDailyEquipmentProductionAsync(targetEquipmentId, DateOnly.FromDateTime(perf.WorkDate), perf.GoodQty, perf.BadQty);
 
             return perf;
         }

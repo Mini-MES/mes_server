@@ -15,7 +15,7 @@ namespace mes_server.Services.EquipmentService
             _equipmentRepository = equipmentRepository;
         }
 
-        public async Task CreateDailyEquipment(string targetEquipmentId, DateOnly today, int goodQty, int badQty)
+        public async Task CreateDailyEquipmentProductionAsync(string targetEquipmentId, DateOnly today, int goodQty, int badQty)
         {
             var daily = await _dailyEquipmentProductionRepository.FindAsync(d => d.EquipmentID == targetEquipmentId && d.WorkDate == today);
 

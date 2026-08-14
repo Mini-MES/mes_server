@@ -2,6 +2,6 @@
 {
     public interface IDailyEquipmentProductionService
     {
-        Task CreateDailyEquipment(string targetEquipmentId, DateOnly today, int goodQty, int badQty);
+        Task CreateDailyEquipmentProductionAsync(string targetEquipmentId, DateOnly today, int goodQty, int badQty);
     }
 }
