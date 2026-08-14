@@ -1,7 +1,7 @@
 ﻿using mes_server.Repositories.Interface.Generic;
 using mes_server.Services.Interface;
 
-namespace mes_server.Services
+namespace mes_server.Services.Generic
 {
     public class BaseSerivce<T> : IGenericService<T> where T : class
     {

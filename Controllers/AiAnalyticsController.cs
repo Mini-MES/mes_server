@@ -1,4 +1,4 @@
-using mes_server.Services;
+using mes_server.Services.AISvc;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mes_server.Controllers

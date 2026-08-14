@@ -1,9 +1,8 @@
-using mes_server.Services.Interface;
 using Opc.Ua;
 using Opc.Ua.Client;
 using Opc.Ua.Configuration;
 
-namespace mes_server.Services
+namespace mes_server.Services.OpcSvc
 {
     public class OpcUaService : IOpcUaService
     {

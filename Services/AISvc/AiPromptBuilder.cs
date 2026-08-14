@@ -1,9 +1,9 @@
 using mes_server.Data;
-using mes_server.Services.Interface;
+using mes_server.Services.EquipmentSvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 
-namespace mes_server.Services
+namespace mes_server.Services.AISvc
 {
     public class AiPromptBuilder
     {

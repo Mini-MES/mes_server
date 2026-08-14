@@ -8,7 +8,6 @@ using mes_server.Repositories.Interface.MasterData;
 using mes_server.Repositories.Interface.Production;
 using mes_server.Repositories.MasterData;
 using mes_server.Repositories.Production;
-using mes_server.Services;
 using mes_server.Hubs;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,6 +16,15 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
+using mes_server.Services.ProductionSvc;
+using mes_server.Services.UserSvc;
+using mes_server.Services.InventorySvc;
+using mes_server.Services.MasterDataSvc;
+using mes_server.Services.ToolSvc;
+using mes_server.Services.OpcSvc;
+using mes_server.Services.EquipmentSvc;
+using mes_server.Services.Generic;
+using mes_server.Services.AISvc;
 
 namespace mes_server
 {

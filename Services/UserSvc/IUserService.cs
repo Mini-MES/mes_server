@@ -1,6 +1,6 @@
 ﻿using mes_server.Models.DTOs.MasterData;
 
-namespace mes_server.Services.Interface
+namespace mes_server.Services.UserSvc
 {
     public interface IUserService
     {

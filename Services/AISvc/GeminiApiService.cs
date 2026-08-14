@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 
-namespace mes_server.Services
+namespace mes_server.Services.AISvc
 {
     public class GeminiReportResult
     {

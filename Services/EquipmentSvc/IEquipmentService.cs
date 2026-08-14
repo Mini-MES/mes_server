@@ -2,7 +2,7 @@ using mes_server.Models.DTOs.Analytics;
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
 
-namespace mes_server.Services.Interface
+namespace mes_server.Services.EquipmentSvc
 {
     public interface IEquipmentService
     {

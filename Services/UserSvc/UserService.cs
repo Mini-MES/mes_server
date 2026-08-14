@@ -3,7 +3,6 @@ using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
 using mes_server.Models.Settings;
 using mes_server.Repositories.Interface.MasterData;
-using mes_server.Services.Interface;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -11,7 +10,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace mes_server.Services
+namespace mes_server.Services.UserSvc
 {
     public class UserService : IUserService
     {
