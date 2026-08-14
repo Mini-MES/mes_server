@@ -67,6 +67,8 @@ namespace mes_server
             builder.Services.AddSingleton<IOpcUaService, OpcUaService>();
             builder.Services.AddHostedService<OpcUaBackgroundService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IWorkOrderService, WorkOrderService>();
+            builder.Services.AddScoped<ILotService, LotService>();
             // builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>

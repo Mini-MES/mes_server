@@ -16,20 +16,20 @@ namespace mes_server.Controllers
     {
         private readonly IProductionService _productionService;
         private readonly IWorkOrderService _workOrderService;
-        private readonly IGenericRepository<Lot> _lotRepository;
+        private readonly ILotService _lotService;
         private readonly IHubContext<MesHub> _hubContext;
         private readonly ILogger<ProductionController> _logger;
 
         public ProductionController(
             IProductionService productionService,
             IWorkOrderService workOrderService,
-            IGenericRepository<Lot> lotRepository,
+            ILotService lotService,
             IHubContext<MesHub> hubContext,
             ILogger<ProductionController> logger)
         {
             _productionService = productionService;
             _workOrderService = workOrderService;
-            _lotRepository = lotRepository;
+            _lotService = lotService;
             _hubContext = hubContext;
             _logger = logger;
         }
@@ -46,7 +46,7 @@ namespace mes_server.Controllers
         [HttpGet("lots")]
         public async Task<IActionResult> GetLots()
         {
-            var result = await _lotRepository.GetAllAsync();
+            var result = await _lotService.GetAllLotsAsync();
             return Ok(result);
         }
 
@@ -210,7 +210,7 @@ namespace mes_server.Controllers
         [HttpGet("lot/status/{lotId}")]
         public async Task<IActionResult> GetLotStatus([FromRoute] string lotId)
         {
-            var result = await _productionService.GetLotStatusAsync(lotId);
+            var result = await _lotService.GetLotByIdAsync(lotId);
             return Ok(new { Message = "Lot 상태가 성공적으로 조회되었습니다.", data = result });
         }
 
