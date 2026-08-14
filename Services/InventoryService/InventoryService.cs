@@ -5,9 +5,8 @@ using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
-using mes_server.Services.Interface;
 
-namespace mes_server.Services
+namespace mes_server.Services.InventoryService
 {
     public class InventoryService : IInventoryService
     {

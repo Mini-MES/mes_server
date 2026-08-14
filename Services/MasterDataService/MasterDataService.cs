@@ -3,10 +3,9 @@ using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
-using mes_server.Services.Interface;
 using Microsoft.EntityFrameworkCore;
 
-namespace mes_server.Services
+namespace mes_server.Services.MasterDataService
 {
     public class MasterDataService : IMasterDataService
     {

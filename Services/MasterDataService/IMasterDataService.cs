@@ -2,7 +2,7 @@ using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 
-namespace mes_server.Services.Interface
+namespace mes_server.Services.MasterDataService
 {
     public interface IMasterDataService
     {

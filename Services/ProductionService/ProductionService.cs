@@ -8,10 +8,10 @@ using mes_server.Repositories.Interface.Generic;
 using mes_server.Repositories.Interface.History;
 using mes_server.Repositories.Interface.Production;
 using mes_server.Repositories.Interface.MasterData;
-using mes_server.Services.Interface;
 using Microsoft.EntityFrameworkCore;
+using mes_server.Services.InventoryService;
 
-namespace mes_server.Services
+namespace mes_server.Services.ProductionService
 {
     public class ProductionService : IProductionService
     {

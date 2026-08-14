@@ -1,5 +1,6 @@
 ﻿using mes_server.Models.DTOs.MasterData;
-using mes_server.Services.Interface;
+using mes_server.Services.AuthService;
+using mes_server.Services.UserService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,8 +11,13 @@ namespace mes_server.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly IAuthService _authService;
 
-        public AuthController(IUserService userService) => _userService = userService;
+        public AuthController(IUserService userService, IAuthService authService)
+        {
+            _userService = userService;
+            _authService = authService;
+        }
 
         // 회원가입
         [HttpPost("signup")]
@@ -25,12 +31,13 @@ namespace mes_server.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            var (token, refreshToken) = await _userService.LoginAsync(dto);
+            var (token, refreshToken) = await _authService.LoginAsync(dto);
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions { HttpOnly = true, Secure = true });
             Response.Cookies.Append("token", token, new CookieOptions { HttpOnly = true, Secure = true });
             return Ok(new { Message = "로그인 성공" });
         }
 
+        // 유저 인증 확인
         [Authorize]
         [HttpGet("check")]
         public IActionResult CheckAuth()
@@ -55,18 +62,22 @@ namespace mes_server.Controllers
         {
             var refreshToken = Request.Cookies["refreshToken"];
             if (string.IsNullOrEmpty(refreshToken)) return BadRequest("Token missing");
-            var newTokens = await _userService.RefreshTokenAsync(refreshToken);
+            var newTokens = await _authService.RefreshTokenAsync(refreshToken);
             Response.Cookies.Append("refreshToken", newTokens.refreshToken, new CookieOptions { HttpOnly = true, Secure = true });
             Response.Cookies.Append("token", newTokens.token, new CookieOptions { HttpOnly = true, Secure = true });
             return Ok(new { Message = "토큰이 성공적으로 갱신되었습니다." });
         }
 
+        // 역할 변경
         [Authorize(Roles = "Admin")]
         [HttpPost("users/{id}/role")]
-        [Authorize(Roles = "Admin")] // 관리자만 권한 수정 가능
         public async Task<IActionResult> UpdateRole([FromRoute] string id, [FromBody] string newRole)
         {
-            await _userService.UpdateUserRoleAsync(id, newRole);
+            var updated = await _userService.UpdateUserRoleAsync(id, newRole);
+            if (!updated)
+            {
+                return NotFound(new { Message = "User not found." });
+            }
             return Ok(new { Message = "권한이 업데이트되었습니다." });
         }
     }

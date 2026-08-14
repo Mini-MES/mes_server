@@ -8,7 +8,6 @@ using mes_server.Repositories.Interface.MasterData;
 using mes_server.Repositories.Interface.Production;
 using mes_server.Repositories.MasterData;
 using mes_server.Repositories.Production;
-using mes_server.Services;
 using mes_server.Hubs;
 using mes_server.Services.Interface;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,6 +16,16 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
+using mes_server.Services.ProductionService;
+using mes_server.Services.UserService;
+using mes_server.Services.InventoryService;
+using mes_server.Services.MasterDataService;
+using mes_server.Services.ToolService;
+using mes_server.Services.OpcService;
+using mes_server.Services.EquipmentService;
+using mes_server.Services.Generic;
+using mes_server.Services.AIService;
+using mes_server.Services.AuthService;
 
 namespace mes_server
 {
@@ -57,6 +66,7 @@ namespace mes_server
             builder.Services.AddScoped<AiPromptBuilder>();
             builder.Services.AddSingleton<IOpcUaService, OpcUaService>();
             builder.Services.AddHostedService<OpcUaBackgroundService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
             // builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>

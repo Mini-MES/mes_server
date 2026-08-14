@@ -1,5 +1,5 @@
 using mes_server.Models.DTOs.MasterData;
-using mes_server.Services.Interface;
+using mes_server.Services.EquipmentService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace mes_server.Controllers

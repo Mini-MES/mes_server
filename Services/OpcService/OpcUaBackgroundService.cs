@@ -4,12 +4,10 @@ using mes_server.Models.Analytics;
 using mes_server.Models.Enum;
 using mes_server.Models.History;
 using mes_server.Models.MasterData;
-using mes_server.Models.Production;
-using mes_server.Services.Interface;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
-namespace mes_server.Services
+namespace mes_server.Services.OpcService
 {
     public class OpcUaBackgroundService : BackgroundService
     {
