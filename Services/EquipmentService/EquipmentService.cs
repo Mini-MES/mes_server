@@ -134,7 +134,7 @@ namespace mes_server.Services.EquipmentService
 
         public async Task<IEnumerable<DowntimeReasonDto>> GetDowntimeReasonsAsync()
         {
-            var reasons = await _downtimeReasonRepository.FindAsync(r => r.IsActive);
+            var reasons = await _downtimeReasonRepository.GetAllAsync();
             return reasons.Select(r => new DowntimeReasonDto
             {
                 ReasonCode = r.ReasonCode,

@@ -6,5 +6,6 @@ namespace mes_server.Repositories.Interface.Production
     public interface ILotRepository : IGenericRepository<Lot> 
     {
         Task<Lot?> GetLotWithDetailsAsync(string lotId);
+        Task<IEnumerable<Lot>> GetLotsByOrderIdAsync(int orderId);
     }
 }

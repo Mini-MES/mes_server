@@ -12,6 +12,13 @@ namespace mes_server.Repositories.Production
         {
         }
 
+        public async Task<IEnumerable<Lot>> GetLotsByOrderIdAsync(int orderId)
+        {
+            return await Context.Lots
+                .Where(l => l.OrderID == orderId)
+                .ToListAsync();
+        }
+
         public async Task<Lot?> GetLotWithDetailsAsync(string lotId)
         {
             return await Context.Lots

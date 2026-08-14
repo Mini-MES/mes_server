@@ -69,6 +69,8 @@ namespace mes_server
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IWorkOrderService, WorkOrderService>();
             builder.Services.AddScoped<ILotService, LotService>();
+            builder.Services.AddScoped<IPerformanceService, PerformanceService>();
+            builder.Services.AddScoped<IDailyEquipmentProductionService, DailyEquipmentProductionService>();
             // builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>

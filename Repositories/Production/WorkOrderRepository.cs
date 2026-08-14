@@ -16,6 +16,7 @@ namespace mes_server.Repositories.Production
         {
             return await Context.WorkOrders
                 .Include(wo => wo.Product)
+                .Include(wo => wo.Lots)
                 .ToListAsync();
     
         }

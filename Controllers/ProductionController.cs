@@ -16,6 +16,7 @@ namespace mes_server.Controllers
     {
         private readonly IProductionService _productionService;
         private readonly IWorkOrderService _workOrderService;
+        private readonly IPerformanceService _performanceService;
         private readonly ILotService _lotService;
         private readonly IHubContext<MesHub> _hubContext;
         private readonly ILogger<ProductionController> _logger;
@@ -23,12 +24,14 @@ namespace mes_server.Controllers
         public ProductionController(
             IProductionService productionService,
             IWorkOrderService workOrderService,
+            IPerformanceService performanceService,
             ILotService lotService,
             IHubContext<MesHub> hubContext,
             ILogger<ProductionController> logger)
         {
             _productionService = productionService;
             _workOrderService = workOrderService;
+            _performanceService = performanceService;
             _lotService = lotService;
             _hubContext = hubContext;
             _logger = logger;
@@ -104,11 +107,11 @@ namespace mes_server.Controllers
             }
         }
 
-        // 생산 상태 조회
+        // 특정 생산에 Performance 조회
         [HttpGet("status/{orderId}")]
         public async Task<IActionResult> GetProductionStatus([FromRoute] int orderId)
         {
-            var result = await _productionService.GetProductionStatusAsync(orderId);
+            var result = await _performanceService.GetProductionStatusAsync(orderId);
             return Ok(new { Message = "생산 상태가 성공적으로 조회되었습니다.", data = result });
         }
 
@@ -168,7 +171,7 @@ namespace mes_server.Controllers
         public async Task<IActionResult> RegisterPerformance([FromBody] PerformanceRegisterDto registerDto)
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
-            var result = await _productionService.RegisterPerformanceAsync(registerDto, userId);
+            var result = await _performanceService.RegisterPerformanceAsync(registerDto, userId);
 
             try
             {

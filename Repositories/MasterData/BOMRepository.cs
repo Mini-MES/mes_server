@@ -11,7 +11,16 @@ namespace mes_server.Repositories.MasterData
         public BOMRepository(MESDbContext context) : base(context)
         {
         }
-        public async Task<IEnumerable<BOM>> GetBOMByProductIdAsync(string productId)
+        public async Task<IEnumerable<BOM>> GetBomsByProcessIdAsync(int processId)
+        {
+            return await Context.BOMs
+                .Where(b => b.ProcessID == processId)
+                .Include(b => b.Process)
+                .Include(b => b.ChildProduct)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<BOM>> GetAllBomsByProductIdAsync(string productId)
         {
             return await Context.BOMs
                 .Where(b => b.ProductID == productId)

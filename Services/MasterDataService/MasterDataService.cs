@@ -3,23 +3,24 @@ using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
+using mes_server.Repositories.Interface.MasterData;
 using Microsoft.EntityFrameworkCore;
 
 namespace mes_server.Services.MasterDataService
 {
     public class MasterDataService : IMasterDataService
     {
-        private readonly IGenericRepository<BOM> _bomRepository;
+        private readonly IBOMRepository _bomRepository;
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
-        private readonly IGenericRepository<BadReasonMaster> _badReasonMasterRepository;
+        private readonly IBadReasonMasterRepository _badReasonMasterRepository;
         private readonly IGenericRepository<ProductMaster> _productRepository;
         private readonly MESDbContext _context;
 
         public MasterDataService(
             MESDbContext context,
-            IGenericRepository<BOM> bomRepository,
+            IBOMRepository bomRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,
-            IGenericRepository<BadReasonMaster> badReasonMasterRepository,
+            IBadReasonMasterRepository badReasonMasterRepository,
             IGenericRepository<ProductMaster> productRepository)
         {
             _context = context;
@@ -37,13 +38,12 @@ namespace mes_server.Services.MasterDataService
 
         public async Task<IEnumerable<BadReasonMaster>> GetBadReasonByCodeAsync(ReasonCode code)
         {
-            return await _badReasonMasterRepository.FindAsync(b => b.ReasonCode == code);
+            return await _badReasonMasterRepository.GetAllBadReasonMasterByCodeAsync(code);
         }
 
         public async Task<ProcessMaster?> GetProcessBySequenceAsync(int sequence)
         {
-            var process = await _processMasterRepository.FindAsync(p => p.SequenceOrder == sequence);
-            return process?.SingleOrDefault();
+            return await _processMasterRepository.FindAsync(p => p.SequenceOrder == sequence);
         }
 
         public async Task<IEnumerable<ProcessMaster>> GetProcessListAsync()
@@ -54,7 +54,7 @@ namespace mes_server.Services.MasterDataService
 
         public async Task<IEnumerable<BOM>> GetProductBOMAsync(string productId)
         {
-            return await _bomRepository.FindAsync(b => b.ProductID.Equals(productId));
+            return await _bomRepository.GetAllBomsByProductIdAsync(productId);
         }
 
         public async Task<bool> ValidateBOMAsync(string productId)
@@ -69,10 +69,12 @@ namespace mes_server.Services.MasterDataService
                 b.ChildProductID == childProductId &&
                 b.ProcessID == processId);
 
-            var entity = bom.SingleOrDefault();
-            if (entity == null) return false;
+            if(bom == null)
+            {
+                return false; 
+            }
 
-            await _bomRepository.DeleteAsync(entity);
+            await _bomRepository.DeleteAsync(bom);
             await _bomRepository.SaveChangesAsync();
             return true;
         }
