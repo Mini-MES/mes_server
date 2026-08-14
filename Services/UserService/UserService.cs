@@ -1,9 +1,8 @@
-﻿using mes_server.Data;
-using mes_server.Models.DTOs.MasterData;
+﻿using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.MasterData;
 
-namespace mes_server.Services.UserSvc
+namespace mes_server.Services.UserService
 {
     public class UserService : IUserService
     {

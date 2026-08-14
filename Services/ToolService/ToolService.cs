@@ -6,7 +6,7 @@ using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Repositories.Interface.History;
 
-namespace mes_server.Services.ToolSvc
+namespace mes_server.Services.ToolService
 {
     public class ToolService : IToolService
     {

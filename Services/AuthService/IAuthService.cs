@@ -1,6 +1,6 @@
 ﻿using mes_server.Models.DTOs.MasterData;
 
-namespace mes_server.Services.AuthSvc
+namespace mes_server.Services.AuthService
 {
     public interface IAuthService
     {

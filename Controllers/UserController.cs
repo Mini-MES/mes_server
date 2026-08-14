@@ -1,6 +1,6 @@
 ﻿using mes_server.Models.DTOs.MasterData;
-using mes_server.Services.AuthSvc;
-using mes_server.Services.UserSvc;
+using mes_server.Services.AuthService;
+using mes_server.Services.UserService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -69,7 +69,6 @@ namespace mes_server.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost("users/{id}/role")]
-        [Authorize(Roles = "Admin")] // 관리자만 권한 수정 가능
         public async Task<IActionResult> UpdateRole([FromRoute] string id, [FromBody] string newRole)
         {
             await _userService.UpdateUserRoleAsync(id, newRole);

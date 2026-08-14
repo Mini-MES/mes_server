@@ -5,7 +5,7 @@ using mes_server.Repositories.Interface.Generic;
 using mes_server.Models.Production;
 using mes_server.Hubs;
 using Microsoft.AspNetCore.SignalR;
-using mes_server.Services.ProductionSvc;
+using mes_server.Services.ProductionService;
 
 namespace mes_server.Controllers
 {

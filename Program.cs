@@ -16,16 +16,16 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
-using mes_server.Services.ProductionSvc;
-using mes_server.Services.UserSvc;
-using mes_server.Services.InventorySvc;
-using mes_server.Services.MasterDataSvc;
-using mes_server.Services.ToolSvc;
-using mes_server.Services.OpcSvc;
-using mes_server.Services.EquipmentSvc;
+using mes_server.Services.ProductionService;
+using mes_server.Services.UserService;
+using mes_server.Services.InventoryService;
+using mes_server.Services.MasterDataService;
+using mes_server.Services.ToolService;
+using mes_server.Services.OpcService;
+using mes_server.Services.EquipmentService;
 using mes_server.Services.Generic;
-using mes_server.Services.AISvc;
-using mes_server.Services.AuthSvc;
+using mes_server.Services.AIService;
+using mes_server.Services.AuthService;
 
 namespace mes_server
 {

@@ -3,7 +3,7 @@ using mes_server.Models.Enum;
 using mes_server.Models.History;
 using mes_server.Models.Production;
 
-namespace mes_server.Services.ToolSvc
+namespace mes_server.Services.ToolService
 {
     public interface IToolService
     {

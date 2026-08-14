@@ -1,7 +1,7 @@
 ﻿using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.MasterData;
 using mes_server.Models.Settings;
-using mes_server.Repositories.MasterData;
+using mes_server.Repositories.Interface.MasterData;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -9,14 +9,14 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace mes_server.Services.AuthSvc
+namespace mes_server.Services.AuthService
 {
     public class AuthService : IAuthService
     {
         private readonly JwtSettings _jwtSettings;
-        private readonly UserRepository _userRepository;
+        private readonly IUserRepository _userRepository;
 
-        public AuthService(IOptions<JwtSettings> jwtOptions, UserRepository userRepository)
+        public AuthService(IOptions<JwtSettings> jwtOptions, IUserRepository userRepository)
         {
             _jwtSettings = jwtOptions.Value;
             _userRepository = userRepository;
@@ -25,7 +25,7 @@ namespace mes_server.Services.AuthSvc
         public async Task<(string token, string refreshToken)> LoginAsync(LoginDto loginDto)
         {
             var user = await _userRepository.GetByUserIDAsync(loginDto.UserID);
-            if (user == null || !await CheckPasswordAsync(loginDto.Password, user.PasswordHash))
+            if (user == null || !CheckPassword(loginDto.Password, user.PasswordHash))
             {
                 throw new UnauthorizedAccessException("Invalid username or password.");
             }
@@ -83,7 +83,7 @@ namespace mes_server.Services.AuthSvc
             return tokenHandler.WriteToken(token);
         }
 
-        private async Task<bool> CheckPasswordAsync(string password, string passwordHash)
+        private bool CheckPassword(string password, string passwordHash)
         {
             return BCrypt.Net.BCrypt.Verify(password, passwordHash);
         }

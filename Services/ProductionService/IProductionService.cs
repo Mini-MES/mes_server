@@ -2,7 +2,7 @@ using mes_server.Models.DTOs.Production;
 using mes_server.Models.History;
 using mes_server.Models.Production;
 
-namespace mes_server.Services.ProductionSvc
+namespace mes_server.Services.ProductionService
 {
     public interface IProductionService
     {

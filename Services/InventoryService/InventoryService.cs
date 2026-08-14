@@ -6,7 +6,7 @@ using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
 
-namespace mes_server.Services.InventorySvc
+namespace mes_server.Services.InventoryService
 {
     public class InventoryService : IInventoryService
     {

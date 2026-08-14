@@ -1,4 +1,4 @@
-namespace mes_server.Services.OpcSvc
+namespace mes_server.Services.OpcService
 {
     public interface IOpcUaService
     {

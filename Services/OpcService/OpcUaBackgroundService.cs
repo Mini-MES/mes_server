@@ -7,7 +7,7 @@ using mes_server.Models.MasterData;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
-namespace mes_server.Services.OpcSvc
+namespace mes_server.Services.OpcService
 {
     public class OpcUaBackgroundService : BackgroundService
     {

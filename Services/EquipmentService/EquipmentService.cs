@@ -8,7 +8,7 @@ using mes_server.Repositories.Interface.Generic;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
-namespace mes_server.Services.EquipmentSvc
+namespace mes_server.Services.EquipmentService
 {
     public class EquipmentService : IEquipmentService
     {

@@ -5,7 +5,7 @@ using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
 using Microsoft.EntityFrameworkCore;
 
-namespace mes_server.Services.MasterDataSvc
+namespace mes_server.Services.MasterDataService
 {
     public class MasterDataService : IMasterDataService
     {
