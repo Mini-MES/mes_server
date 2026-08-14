@@ -15,20 +15,20 @@ namespace mes_server.Controllers
     public class ProductionController : ControllerBase
     {
         private readonly IProductionService _productionService;
-        private readonly IGenericRepository<WorkOrder> _workOrderRepository;
+        private readonly IWorkOrderService _workOrderService;
         private readonly IGenericRepository<Lot> _lotRepository;
         private readonly IHubContext<MesHub> _hubContext;
         private readonly ILogger<ProductionController> _logger;
 
         public ProductionController(
             IProductionService productionService,
-            IGenericRepository<WorkOrder> workOrderRepository,
+            IWorkOrderService workOrderService,
             IGenericRepository<Lot> lotRepository,
             IHubContext<MesHub> hubContext,
             ILogger<ProductionController> logger)
         {
             _productionService = productionService;
-            _workOrderRepository = workOrderRepository;
+            _workOrderService = workOrderService;
             _lotRepository = lotRepository;
             _hubContext = hubContext;
             _logger = logger;
@@ -38,8 +38,8 @@ namespace mes_server.Controllers
         [HttpGet("orders")]
         public async Task<IActionResult> GetWorkOrders()
         {
-            var result = await _workOrderRepository.GetAllAsync();
-            return Ok(result.OrderByDescending(o => o.OrderID));
+            var result = await _workOrderService.GetAllWorkOrdersAsync();
+            return Ok(result.OrderByDescending(o => o.OrderDate));
         }
 
         // LOT 전체 조회
@@ -54,7 +54,7 @@ namespace mes_server.Controllers
         [HttpPost("order")]
         public async Task<IActionResult> CreateWorkOrder([FromBody] WorkOrderCreateDto createDto)
         {
-            var result = await _productionService.CreateWorkOrderAsync(createDto);
+            var result = await _workOrderService.CreateWorkOrderAsync(createDto);
 
             try
             {
@@ -116,7 +116,7 @@ namespace mes_server.Controllers
         [HttpPost("complete/{orderId}")]
         public async Task<IActionResult> CompleteProduction([FromRoute] int orderId)
         {
-            await _productionService.CompleteWorkOrderAsync(orderId);
+            await _workOrderService.CompleteWorkOrderAsync(orderId);
             return Ok(new { Message = "생산이 성공적으로 완료되었습니다." });
         }
 
@@ -124,7 +124,7 @@ namespace mes_server.Controllers
         [HttpPut("order/{orderId}")]
         public async Task<IActionResult> UpdateWorkOrder(int orderId, [FromBody] WorkOrderUpdateDto updateDto)
         {
-            await _productionService.UpdateWorkOrderAsync(orderId, updateDto);
+            await _workOrderService.UpdateWorkOrderAsync(orderId, updateDto);
             return Ok(new { Message = "생산 지시가 성공적으로 수정되었습니다." });
         }
 
@@ -132,7 +132,7 @@ namespace mes_server.Controllers
         [HttpGet("order/{orderId}")]
         public async Task<IActionResult> GetWorkOrder([FromRoute] int orderId)
         {
-            var result = await _productionService.GetWorkOrderByIdAsync(orderId);
+            var result = await _workOrderService.GetWorkOrderByIdAsync(orderId);
             return result != null ? Ok(new { Message = "생산 지시가 성공적으로 조회되었습니다.", data = result }) : NotFound("생산 지시를 찾을 수 없습니다.");
         }
 
@@ -140,7 +140,7 @@ namespace mes_server.Controllers
         [HttpDelete("order/{orderId}")]
         public async Task<IActionResult> DeleteWorkOrder(int orderId)
         {
-            await _productionService.DeleteWorkOrderAsync(orderId);
+            await _workOrderService.DeleteWorkOrderAsync(orderId);
             return Ok(new { Message = "생산 지시가 삭제되었습니다." });
         }
 
