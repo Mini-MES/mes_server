@@ -8,8 +8,9 @@ using mes_server.Repositories.Interface.Generic;
 using mes_server.Repositories.Interface.History;
 using mes_server.Repositories.Interface.MasterData;
 using mes_server.Repositories.Interface.Production;
+using mes_server.Services.Interface;
 using mes_server.Services.InventoryService;
-using Microsoft.EntityFrameworkCore;
+
 
 namespace mes_server.Services.ProductionService
 {
@@ -25,6 +26,7 @@ namespace mes_server.Services.ProductionService
 
         private readonly IWorkOrderService _workOrderService;
         private readonly IInventoryService _inventoryService;
+        private readonly IGenericService<DailyEquipmentProduction> _genericService;
 
 
         public PerformanceService(
@@ -71,12 +73,7 @@ namespace mes_server.Services.ProductionService
                 BadQty = registerDto.BadQty,
                 WorkDate = DateTime.Now
             };
-
-            var lot = await _lotRepository.GetByIdAsync(perf.LotID);
-            if (lot == null) throw new KeyNotFoundException("존재하지 않는 Lot입니다.");
-
-            var workOrder = await _workOrderService.GetWorkOrderByIdAsync(perf.WorkOrderID);
-            if (workOrder == null) throw new KeyNotFoundException("존재하지 않는 생산지시입니다.");
+            var (lot, workOrder) = await ValidateProductionAsync(registerDto);
 
             await _performanceRepository.CreateAsync(perf);
             await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.GoodQty);
@@ -88,21 +85,7 @@ namespace mes_server.Services.ProductionService
                 lot.Status = LotStatus.HOLD;
             }
 
-            var processList = await _processMasterRepository.GetAllAsync();
-            var productBoms = await _bomRepository.GetAllBomsByProductIdAsync(workOrder.ProductID);
-            var productProcessIds = productBoms.Select(b => b.ProcessID).Distinct().ToList();
-
-            int? lastProcessId = null;
-            if (productProcessIds.Any())
-            {
-                var productProcesses = processList.Where(p => productProcessIds.Contains(p.ProcessID));
-                lastProcessId = productProcesses.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
-            }
-
-            if (lastProcessId == null)
-            {
-                lastProcessId = processList.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
-            }
+            var lastProcessId = await GetLastProcessIdForProductAsync(workOrder);
 
             if (lastProcessId != null && perf.ProcessID == lastProcessId)
             {
@@ -155,6 +138,45 @@ namespace mes_server.Services.ProductionService
             await _dailyEquipmentProductionRepository.SaveChangesAsync();
 
             return perf;
+        }
+
+        private async Task<(Lot lot, WorkOrder workOrder)> ValidateProductionAsync(PerformanceRegisterDto registerDto)
+        {
+            var lot = await _lotRepository.GetByIdAsync(registerDto.LotID);
+
+            if (lot == null)
+            {
+                throw new ArgumentException($"Lot with ID {registerDto.LotID} does not exist.");
+            }
+
+            var workOrder = await _workOrderRepository.GetByIdAsync(registerDto.WorkOrderID);
+
+            if (workOrder == null) {
+                throw new ArgumentException($"Work order with ID {registerDto.WorkOrderID} does not exist.");
+            }
+
+            return (lot, workOrder);
+        }
+
+        private async Task<int?> GetLastProcessIdForProductAsync(WorkOrder workOrder)
+        {
+            var processList = await _processMasterRepository.GetAllAsync();
+            var productBoms = await _bomRepository.GetAllBomsByProductIdAsync(workOrder.ProductID);
+            var productProcessIds = productBoms.Select(b => b.ProcessID).Distinct().ToList();
+
+            int? lastProcessId = null;
+            if (productProcessIds.Any())
+            {
+                var productProcesses = processList.Where(p => productProcessIds.Contains(p.ProcessID));
+                lastProcessId = productProcesses.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
+            }
+
+            if (lastProcessId == null)
+            {
+                lastProcessId = processList.OrderByDescending(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
+            }
+
+            return lastProcessId;
         }
     }
 }

@@ -13,7 +13,6 @@ namespace mes_server.Services.ProductionService
 {
     public class ProductionService : IProductionService
     {
-        private readonly IPerformanceRepository _performanceRepository;
         private readonly IWorkOrderService _workOrderService;
         private readonly ILotRepository _lotRepository;
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
@@ -25,8 +24,7 @@ namespace mes_server.Services.ProductionService
         private readonly IPerformanceService _performanceService;
         private readonly ILotService _lotService;
 
-        public ProductionService(
-            IPerformanceRepository performanceRepository,
+        public ProductionService(,
             IWorkOrderService workOrderService,
             ILotRepository lotRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,
@@ -38,7 +36,6 @@ namespace mes_server.Services.ProductionService
             ILotService lotService
             )
         {
-            _performanceRepository = performanceRepository;
             _workOrderService = workOrderService;
             _lotRepository = lotRepository;
             _processMasterRepository = processMasterRepository;
