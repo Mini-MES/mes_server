@@ -8,10 +8,8 @@ namespace mes_server.Services.ProductionService
     {
         Task<Performance> RegisterPerformanceAsync(PerformanceRegisterDto registerDto, string userId);
         Task<IEnumerable<Performance>> GetProductionStatusAsync(int orderId);
-        Task ChangeLotProcessAsync(string lotId, int nextProcessId);
         Task<string> StartProductionAsync(int orderId);
         Task MoveProcessAsync(PerformanceRegisterDto perfDto, int nextProcessId, string userId);
-        Task<Lot> GetLotStatusAsync(string lotId);
         Task UnholdLotAsync(string lotId);
     }
 }
