@@ -25,7 +25,7 @@ namespace mes_server.Services.AuthSvc
         public async Task<(string token, string refreshToken)> LoginAsync(LoginDto loginDto)
         {
             var user = await _userRepository.GetByUserIDAsync(loginDto.UserID);
-            if (user == null || !await AuthenticateAsync(loginDto.Password, user.PasswordHash))
+            if (user == null || !await CheckPasswordAsync(loginDto.Password, user.PasswordHash))
             {
                 throw new UnauthorizedAccessException("Invalid username or password.");
             }
@@ -83,7 +83,7 @@ namespace mes_server.Services.AuthSvc
             return tokenHandler.WriteToken(token);
         }
 
-        private async Task<bool> AuthenticateAsync(string password, string passwordHash)
+        private async Task<bool> CheckPasswordAsync(string password, string passwordHash)
         {
             return BCrypt.Net.BCrypt.Verify(password, passwordHash);
         }
