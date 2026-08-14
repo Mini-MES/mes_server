@@ -15,14 +15,12 @@ namespace mes_server.Services.Generic
         public async Task<T> CreateAsync(T entity)
         {
             await _repository.CreateAsync(entity);
-            await _repository.SaveChangesAsync();
             return entity;
         }
 
         public async Task DeleteAsync(T entity)
         {
             await _repository.DeleteAsync(entity);
-            await _repository.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<T>> GetAllAsync()
@@ -39,7 +37,6 @@ namespace mes_server.Services.Generic
         public async Task UpdateAsync(T entity)
         {
             await _repository.UpdateAsync(entity);
-            await _repository.SaveChangesAsync();
         }
     }
 }

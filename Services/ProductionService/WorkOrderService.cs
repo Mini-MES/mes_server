@@ -1,17 +1,15 @@
 ﻿using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
-using mes_server.Models.Production;
-using mes_server.Repositories.Interface.Generic;
-using Microsoft.EntityFrameworkCore;
+using mes_server.Repositories.Interface.Production;
 
 namespace mes_server.Services.ProductionService
 {
     public class WorkOrderService : IWorkOrderService
     {
-        private readonly IGenericRepository<WorkOrder> _workOrderRepository;
-        private readonly IGenericRepository<Lot> _lotRepository;
+        private readonly IWorkOrderRepository _workOrderRepository;
+        private readonly ILotRepository _lotRepository;
 
-        public WorkOrderService(IGenericRepository<WorkOrder> workOrderRepository, IGenericRepository<Lot> lotRepository)
+        public WorkOrderService(IWorkOrderRepository workOrderRepository, ILotRepository lotRepository)
         {
             _workOrderRepository = workOrderRepository;
             _lotRepository = lotRepository;
@@ -29,7 +27,7 @@ namespace mes_server.Services.ProductionService
                     throw new InvalidOperationException($"목표 생산 수량({order.TargetQty} EA) 미달 건은 생산 완료 처리할 수 없습니다. (현재: {order.TotalGoodQty} EA)");
                 }
 
-                var lots = await _lotRepository.FindAsync(l => l.OrderID == orderId);
+                var lots = await _lotRepository.GetLotsByOrderIdAsync(orderId);
                 foreach (var lot in lots)
                 {
                     if (lot.Status == LotStatus.HOLD)
@@ -79,7 +77,7 @@ namespace mes_server.Services.ProductionService
                 throw new InvalidOperationException("이미 진행 중이거나 완료된 생산 지시는 삭제할 수 없습니다.");
             }
 
-            var lots = await _lotRepository.FindAsync(l => l.OrderID == orderId);
+            var lots = await _lotRepository.GetLotsByOrderIdAsync(orderId);
             foreach (var lot in lots)
             {
                 await _lotRepository.DeleteAsync(lot);
@@ -95,8 +93,8 @@ namespace mes_server.Services.ProductionService
             var order = await _workOrderRepository.GetByIdAsync(orderId);
             if (order == null) return null;
 
-            var lots = await _lotRepository.FindAsync(l => l.OrderID == orderId);
-            var lotId = lots.FirstOrDefault()?.LotID;
+            var lots = await _lotRepository.GetLotsByOrderIdAsync(orderId);
+            var lotIds = lots.Select(l => l.LotID).ToList();
 
             return new WorkOrderResponseDto
             {
@@ -109,7 +107,7 @@ namespace mes_server.Services.ProductionService
                 OrderDate = order.OrderDate,
                 StartDate = order.StartDate,
                 DueDate = order.DueDate,
-                LotID = lotId
+                LotID = lotIds
             };
         }
 
@@ -181,9 +179,9 @@ namespace mes_server.Services.ProductionService
 
         public async Task<IEnumerable<WorkOrderResponseDto>> GetAllWorkOrdersAsync()
         {
-            var results = await _workOrderRepository.GetAllAsync();
+            var orders = await _workOrderRepository.GetAllWithDetailsAsync();
 
-            return results.Select(order => new WorkOrderResponseDto
+            return orders.Select(order => new WorkOrderResponseDto
             {
                 OrderID = order.OrderID,
                 ProductID = order.ProductID,
@@ -194,7 +192,6 @@ namespace mes_server.Services.ProductionService
                 OrderDate = order.OrderDate,
                 StartDate = order.StartDate,
                 DueDate = order.DueDate,
-                LotID = _lotRepository.FindAsync(l => l.OrderID == order.OrderID).Result.FirstOrDefault()?.LotID
             }).ToList();
         }
 

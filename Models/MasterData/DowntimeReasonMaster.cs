@@ -14,7 +14,5 @@ namespace mes_server.Models.MasterData
 
         [MaxLength(50)]
         public string Category { get; set; } = "GENERAL";
-
-        public bool IsActive { get; set; } = true; // 비가동 사유 사용 여부
     }
 }

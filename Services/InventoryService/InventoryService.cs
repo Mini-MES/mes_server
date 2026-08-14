@@ -5,13 +5,14 @@ using mes_server.Models.History;
 using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
+using mes_server.Repositories.Interface.MasterData;
 
 namespace mes_server.Services.InventoryService
 {
     public class InventoryService : IInventoryService
     {
         private readonly IGenericRepository<ProductMaster> _productRepository;
-        private readonly IGenericRepository<BOM> _bomRepository;
+        private readonly IBOMRepository _bomRepository;
         private readonly IGenericRepository<WorkOrder> _workOrderRepository;
         private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly MESDbContext _context;
@@ -19,7 +20,7 @@ namespace mes_server.Services.InventoryService
         public InventoryService(
             MESDbContext context,
             IGenericRepository<ProductMaster> productRepository,
-            IGenericRepository<BOM> bomRepository,
+            IBOMRepository bomRepository,
             IGenericRepository<WorkOrder> workOrderRepository,
             IGenericRepository<Shipment> shipmentRepository)
         {
@@ -47,8 +48,8 @@ namespace mes_server.Services.InventoryService
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
             if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
             
-            var allBoms = await _bomRepository.FindAsync(b => b.ProductID == workOrder.ProductID);
-            
+            var allBoms = await _bomRepository.GetAllBomsByProductIdAsync(workOrder.ProductID);
+
             var targetBoms = allBoms.Where(b => b.ProcessID == processId).ToList();
             if (!targetBoms.Any() && (processId == 1 || processId == 2))
             {
@@ -84,7 +85,7 @@ namespace mes_server.Services.InventoryService
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
             if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
 
-            var boms = await _bomRepository.FindAsync(b => b.ProcessID == processId);
+            var boms = await _bomRepository.GetBomsByProcessIdAsync(processId);
             var currentBom = boms.FirstOrDefault();
 
             if (currentBom != null)
@@ -125,7 +126,7 @@ namespace mes_server.Services.InventoryService
                 return true;
             }
 
-            var boms = await _bomRepository.FindAsync(b => b.ProductID == productId);
+            var boms = await _bomRepository.GetAllBomsByProductIdAsync(productId);
             foreach (var bom in boms)
             {
                 var material = await _productRepository.GetByIdAsync(bom.ChildProductID);
@@ -145,7 +146,7 @@ namespace mes_server.Services.InventoryService
             while (queue.Count > 0)
             {
                 var (currProduct, currQty) = queue.Dequeue();
-                var boms = await _bomRepository.FindAsync(b => b.ProductID == currProduct);
+                var boms = await _bomRepository.GetAllBomsByProductIdAsync(currProduct);
 
                 foreach (var bom in boms)
                 {
