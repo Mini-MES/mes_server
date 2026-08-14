@@ -26,7 +26,7 @@ namespace mes_server.Services.UserService
             {
                 UserID = dto.UserID,
                 UserName = dto.UserName,
-                UserRole = dto.UserRole
+                UserRole = "Operator", // 기본 역할로 지정, 이후 변경하려면 UdpateRole 사용
             };
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
@@ -34,7 +34,7 @@ namespace mes_server.Services.UserService
             await _userRepository.SaveChangesAsync();
         }
 
-        public async Task UpdateUserRoleAsync(string userId, string newRole)
+        public async Task<bool> UpdateUserRoleAsync(string userId, string newRole)
         {
             var user = await _userRepository.GetByIdAsync(userId);
             if (user != null)
@@ -42,7 +42,10 @@ namespace mes_server.Services.UserService
                 user.UserRole = newRole;
                 await _userRepository.UpdateAsync(user);
                 await _userRepository.SaveChangesAsync();
+
+                return true;
             }
+            return false;
         }
     }
 }

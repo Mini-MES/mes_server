@@ -5,6 +5,6 @@ namespace mes_server.Services.UserService
     public interface IUserService
     {
         Task RegisterUserAsync(UserRegisterDto dto);
-        Task UpdateUserRoleAsync(string userId, string newRole);
+        Task<bool> UpdateUserRoleAsync(string userId, string newRole);
     }
 }

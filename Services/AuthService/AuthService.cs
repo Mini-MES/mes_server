@@ -51,6 +51,7 @@ namespace mes_server.Services.AuthService
             var newRefreshToken = GenerateRefreshToken();
 
             user.RefreshToken = newRefreshToken;
+            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
             await _userRepository.UpdateAsync(user);
             await _userRepository.SaveChangesAsync();
 

@@ -37,6 +37,7 @@ namespace mes_server.Controllers
             return Ok(new { Message = "로그인 성공" });
         }
 
+        // 유저 인증 확인
         [Authorize]
         [HttpGet("check")]
         public IActionResult CheckAuth()
@@ -67,11 +68,16 @@ namespace mes_server.Controllers
             return Ok(new { Message = "토큰이 성공적으로 갱신되었습니다." });
         }
 
+        // 역할 변경
         [Authorize(Roles = "Admin")]
         [HttpPost("users/{id}/role")]
         public async Task<IActionResult> UpdateRole([FromRoute] string id, [FromBody] string newRole)
         {
-            await _userService.UpdateUserRoleAsync(id, newRole);
+            var updated = await _userService.UpdateUserRoleAsync(id, newRole);
+            if (!updated)
+            {
+                return NotFound(new { Message = "User not found." });
+            }
             return Ok(new { Message = "권한이 업데이트되었습니다." });
         }
     }
