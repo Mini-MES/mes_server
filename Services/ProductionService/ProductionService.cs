@@ -3,9 +3,7 @@ using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
-using mes_server.Repositories.Interface.History;
 using mes_server.Repositories.Interface.Production;
-using mes_server.Repositories.Interface.MasterData;
 using Microsoft.EntityFrameworkCore;
 using mes_server.Services.InventoryService;
 
@@ -17,7 +15,6 @@ namespace mes_server.Services.ProductionService
         private readonly ILotRepository _lotRepository;
         private readonly IGenericRepository<ProcessMaster> _processMasterRepository;
         private readonly IGenericRepository<Equipment> _equipmentRepository;
-        private readonly IBOMRepository _bomRepository;
         private readonly MESDbContext _context;
 
         private readonly IInventoryService _inventoryService;
@@ -29,7 +26,6 @@ namespace mes_server.Services.ProductionService
             ILotRepository lotRepository,
             IGenericRepository<ProcessMaster> processMasterRepository,
             IGenericRepository<Equipment> equipmentRepository,
-            IBOMRepository bomRepository,
             MESDbContext context,
             IInventoryService inventoryService,
             IPerformanceService performanceService,
@@ -40,7 +36,6 @@ namespace mes_server.Services.ProductionService
             _lotRepository = lotRepository;
             _processMasterRepository = processMasterRepository;
             _equipmentRepository = equipmentRepository;
-            _bomRepository = bomRepository;
             _inventoryService = inventoryService;
             _performanceService = performanceService;
             _lotService = lotService;
