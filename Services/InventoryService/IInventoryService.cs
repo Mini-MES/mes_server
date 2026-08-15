@@ -6,10 +6,10 @@ namespace mes_server.Services.InventoryService
         public interface IInventoryService
         {
             Task UpdateStockAsync(string productId, StockUpdateDto dto);
-            Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty);
+            Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty, bool autoSave = true);
 
-            Task ReceiveFinishedProductAsync(int workOrderId, int productionQty);
-            Task ReceiveSemiFinishedProductAsync(int workOrderId, int processId, int productionQty);
+            Task ReceiveFinishedProductAsync(int workOrderId, int productionQty, bool autoSave = true);
+            Task ReceiveSemiFinishedProductAsync(int workOrderId, int processId, int productionQty, bool autoSave = true);
             Task<IEnumerable<ProductMaster>> GetLowStockMaterialsAsync();
 
             Task<bool> CheckMaterialAvailabilityAsync(string productId, int targetQty);
