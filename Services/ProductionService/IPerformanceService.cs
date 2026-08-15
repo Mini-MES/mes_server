@@ -7,6 +7,6 @@ namespace mes_server.Services.ProductionService
     {
         Task<Performance> RegisterPerformanceAsync(PerformanceRegisterDto registerDto, string userId);
         Task<IEnumerable<Performance>> GetProductionStatusAsync(int orderId);
-        Task ProcessEquipmentPulseAsync(string equipmentId, DateTime timestamp);
+        Task<Performance?> RecordAutoProductionAsync(string equipmentId, string userId = "OPC_SYSTEM");
     }
 }

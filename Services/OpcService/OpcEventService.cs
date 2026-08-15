@@ -1,4 +1,5 @@
 using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Services.EquipmentService;
 using mes_server.Services.ProductionService;
@@ -23,10 +24,7 @@ namespace mes_server.Services.OpcService
             _logger = logger;
         }
 
-        public async Task HandleTagChangedAsync(
-            string tagName,
-            object value,
-            DateTime timestamp)
+        public async Task HandleTagChangedAsync(string tagName, object value, DateTime timestamp)
         {
             switch (tagName)
             {
@@ -48,11 +46,11 @@ namespace mes_server.Services.OpcService
         {
             try
             {
-                await _performanceService.ProcessEquipmentPulseAsync(DemoEquipmentId, timestamp);
+                await _performanceService.RecordAutoProductionAsync(DemoEquipmentId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "⚠️ [OpcEventService] Counter 처리 중 오류 발생");
+                _logger.LogError(ex, "⚠️ [OpcEventService] Counter 이벤트 처리 중 오류 발생");
             }
         }
 

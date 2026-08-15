@@ -90,7 +90,7 @@ namespace mes_server.Services.OpcService
         private async Task DispatchEventAsync(string tagName, object value, DateTime timestamp)
         {
             using var scope = _scopeFactory.CreateScope();
-            var opcEventService = scope.ServiceProvider.GetRequiredService<OpcEventService>();
+            var opcEventService = scope.ServiceProvider.GetRequiredService<IOpcEventService>();
             await opcEventService.HandleTagChangedAsync(tagName, value, timestamp);
         }
 

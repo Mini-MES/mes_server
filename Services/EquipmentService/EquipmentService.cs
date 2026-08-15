@@ -363,5 +363,15 @@ namespace mes_server.Services.EquipmentService
 
             await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetryList);
         }
+
+        public async Task AddRunningTimeAsync(string equipmentId, int seconds = 3)
+        {
+            var equipment = await _equipmentRepository.GetByIdAsync(equipmentId);
+            if (equipment != null)
+            {
+                equipment.TotalRunningSeconds += seconds;
+                await _equipmentRepository.SaveChangesAsync();
+            }
+        }
     }
 }

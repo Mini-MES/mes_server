@@ -15,5 +15,6 @@ namespace mes_server.Services.EquipmentService
         Task<OEESummaryDto> GetOEESummaryAsync();
         Task<IEnumerable<DailyEquipmentProductionDto>> GetDailyEquipmentProductionsAsync(string? equipmentId = null, DateOnly? startDate = null, DateOnly? endDate = null);
         Task BroadcastTelemetryAsync(double sinusoidValue, DateTime timestamp);
+        Task AddRunningTimeAsync(string equipmentId, int seconds = 3);
     }
 }
