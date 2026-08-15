@@ -1,4 +1,4 @@
-﻿using mes_server.Models.DTOs.Production;
+using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
 using mes_server.Repositories.Interface.Production;
 
@@ -17,7 +17,7 @@ namespace mes_server.Services.ProductionService
 
 
 
-        public async Task CompleteWorkOrderAsync(int orderId)
+        public async Task CompleteWorkOrderAsync(int orderId, bool autoSave = true)
         {
             var order = await _workOrderRepository.GetByIdAsync(orderId);
             if (order != null)
@@ -39,6 +39,11 @@ namespace mes_server.Services.ProductionService
 
                 order.Status = OrderStatus.Completed;
                 await _workOrderRepository.UpdateAsync(order);
+
+                if (autoSave)
+                {
+                    await _workOrderRepository.SaveChangesAsync();
+                }
             }
             else
             {

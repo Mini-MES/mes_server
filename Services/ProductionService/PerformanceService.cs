@@ -10,7 +10,6 @@ using mes_server.Repositories.Interface.History;
 using mes_server.Repositories.Interface.MasterData;
 using mes_server.Repositories.Interface.Production;
 using mes_server.Services.EquipmentService;
-using mes_server.Services.Interface;
 using mes_server.Services.InventoryService;
 using Microsoft.AspNetCore.SignalR;
 
@@ -67,7 +66,7 @@ namespace mes_server.Services.ProductionService
             return perf;
         }
 
-        public async Task<Performance> RegisterPerformanceAsync(PerformanceRegisterDto registerDto, string userId)
+        public async Task<Performance> RegisterPerformanceAsync(PerformanceRegisterDto registerDto, string userId, bool autoSave = true, string? equipmentId = null)
         {
             var perf = new Performance
             {
@@ -85,7 +84,7 @@ namespace mes_server.Services.ProductionService
             var (lot, workOrder) = await ValidateProductionAsync(registerDto);
 
             await _performanceRepository.CreateAsync(perf);
-            await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.GoodQty);
+            await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.GoodQty, autoSave: false);
 
             workOrder.TotalBadQty += perf.BadQty;
 
@@ -108,20 +107,28 @@ namespace mes_server.Services.ProductionService
             if (lastProcessId != null && perf.ProcessID == lastProcessId)
             {
                 workOrder.TotalGoodQty += perf.GoodQty;
-                await _inventoryService.ReceiveFinishedProductAsync(perf.WorkOrderID, perf.GoodQty);
+                await _inventoryService.ReceiveFinishedProductAsync(perf.WorkOrderID, perf.GoodQty, autoSave: false);
 
                 if (workOrder.Status != OrderStatus.Completed && workOrder.TotalGoodQty >= workOrder.TargetQty)
                 {
                     workOrder.Status = OrderStatus.Completed;
-                    await _workOrderService.CompleteWorkOrderAsync(workOrder.OrderID);
+                    await _workOrderService.CompleteWorkOrderAsync(workOrder.OrderID, autoSave: false);
                 }
             }
 
-            await _lotRepository.SaveChangesAsync();
-            await _workOrderRepository.SaveChangesAsync();
+            var targetEquipmentId = equipmentId ?? (perf.ProcessID == 3 ? "CNC03" : (perf.ProcessID == 5 ? "CNC05" : "CNC01")); // TODO : PLC 연결 후 고칠 예정
+            await _dailyEquipmentProductionService.CreateDailyEquipmentProductionAsync(
+                targetEquipmentId, 
+                DateOnly.FromDateTime(perf.WorkDate), 
+                perf.GoodQty, 
+                perf.BadQty, 
+                autoSave: false
+            );
 
-            var targetEquipmentId = perf.ProcessID == 3 ? "CNC03" : (perf.ProcessID == 5 ? "CNC05" : "CNC01");
-            await _dailyEquipmentProductionService.CreateDailyEquipmentProductionAsync(targetEquipmentId, DateOnly.FromDateTime(perf.WorkDate), perf.GoodQty, perf.BadQty);
+            if (autoSave)
+            {
+                await _performanceRepository.SaveChangesAsync();
+            }
 
             return perf;
         }
@@ -159,9 +166,11 @@ namespace mes_server.Services.ProductionService
                 InputQty = 1
             };
 
-            var perf = await RegisterPerformanceAsync(registerDto, userId);
+            var perf = await RegisterPerformanceAsync(registerDto, userId, autoSave: false, equipmentId);
 
-            await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: 3);
+            await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: 3, autoSave: false);
+
+            await _performanceRepository.SaveChangesAsync();
 
             _logger.LogInformation("✨ [OPC UA Counter] {EquipmentId} ➔ LOT [{LotId}] 자동 실적 등록 완료 ({Current}/{Target}EA)",
                 equipmentId, lot.LotID, currentGoodQty + 1, targetQty);
