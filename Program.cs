@@ -71,7 +71,7 @@ namespace mes_server
             builder.Services.AddScoped<ILotService, LotService>();
             builder.Services.AddScoped<IPerformanceService, PerformanceService>();
             builder.Services.AddScoped<IDailyEquipmentProductionService, DailyEquipmentProductionService>();
-            builder.Services.AddScoped<OpcEventService, OpcEventService>();
+            builder.Services.AddScoped<IOpcEventService, OpcEventService>();
             // builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>

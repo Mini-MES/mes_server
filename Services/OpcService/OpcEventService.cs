@@ -1,28 +1,25 @@
-﻿using mes_server.Hubs;
-using Microsoft.AspNetCore.SignalR;
+using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.MasterData;
+using mes_server.Services.EquipmentService;
+using mes_server.Services.ProductionService;
 
 namespace mes_server.Services.OpcService
 {
-    public class OpcEventService
+    public class OpcEventService : IOpcEventService
     {
-        private readonly IServiceScopeFactory _scopeFactory;
-        private readonly IHubContext<MesHub> _hubContext;
+        private readonly IPerformanceService _performanceService;
+        private readonly IEquipmentService _equipmentService;
         private readonly ILogger<OpcEventService> _logger;
 
-        private readonly SemaphoreSlim _lock = new(1, 1);
-
-        private double _latestSinusoid;
-
         private const string DemoEquipmentId = "CNC01";
-        private const int DemoProcessId = 2;
 
         public OpcEventService(
-            IServiceScopeFactory scopeFactory,
-            IHubContext<MesHub> hubContext,
+            IPerformanceService performanceService,
+            IEquipmentService equipmentService,
             ILogger<OpcEventService> logger)
         {
-            _scopeFactory = scopeFactory;
-            _hubContext = hubContext;
+            _performanceService = performanceService;
+            _equipmentService = equipmentService;
             _logger = logger;
         }
 
@@ -47,19 +44,63 @@ namespace mes_server.Services.OpcService
             }
         }
 
-        private Task HandleCounterAsync(DateTime timestamp)
+        private async Task HandleCounterAsync(DateTime timestamp)
         {
-            return Task.CompletedTask;
+            try
+            {
+                await _performanceService.ProcessEquipmentPulseAsync(DemoEquipmentId, timestamp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "⚠️ [OpcEventService] Counter 처리 중 오류 발생");
+            }
         }
 
-        private Task HandleTemperatureAsync(object value, DateTime timestamp)
+        private async Task HandleTemperatureAsync(object value, DateTime timestamp)
         {
-            return Task.CompletedTask;
+            try
+            {
+                if (double.TryParse(value?.ToString(), out double sVal))
+                {
+                    await _equipmentService.BroadcastTelemetryAsync(sVal, timestamp);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "⚠️ [OpcEventService] Sinusoid 온도 처리 중 오류 발생");
+            }
         }
 
-        private Task HandleEquipmentStatusAsync(object value, DateTime timestamp)
+        private async Task HandleEquipmentStatusAsync(object value, DateTime timestamp)
         {
-           return Task.CompletedTask;
+            try
+            {
+                var isRunning = false;
+                if (value is bool bVal)
+                {
+                    isRunning = bVal;
+                }
+                else if (int.TryParse(value?.ToString(), out int iVal))
+                {
+                    isRunning = iVal > 0;
+                }
+                else if (double.TryParse(value?.ToString(), out double dVal))
+                {
+                    isRunning = dVal > 0;
+                }
+
+                var status = isRunning ? EquipmentStatus.Running : EquipmentStatus.Idle;
+
+                await _equipmentService.ChangeEquipmentStatusAsync(new ChangeEquipmentStatusRequest
+                {
+                    EquipmentID = DemoEquipmentId,
+                    NewStatus = status
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "⚠️ [OpcEventService] Square 설비 상태 처리 중 오류 발생");
+            }
         }
     }
 }
