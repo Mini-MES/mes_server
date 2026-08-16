@@ -58,11 +58,16 @@ namespace mes_server.Services.InventoryService
 
             foreach (var bom in targetBoms)
             {
-                var product = await _productRepository.GetByIdAsync(bom.ChildProductID);
-                if (product == null) continue;
+                var product = await _productRepository.GetByIdAsync(bom.ChildProductID) ?? throw new KeyNotFoundException($"BOM 자재 '{bom.ChildProductID}'를 찾을 수 없습니다.");
 
                 int deductQty = bom.RequiredQty * productionQty;
-                product.StockQty = Math.Max(0, product.StockQty - deductQty);
+
+                if (product.StockQty < deductQty)
+                {
+                    throw new InvalidOperationException(
+                        $"자재 '{product.ProductID}'의 재고가 부족합니다.");
+                }
+                product.StockQty -= deductQty;
             }
 
             if (autoSave)
