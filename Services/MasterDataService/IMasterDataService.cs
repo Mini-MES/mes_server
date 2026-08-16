@@ -21,5 +21,6 @@ namespace mes_server.Services.MasterDataService
         Task<bool> DeleteBomAsync(string productId, string childProductId, int processId);
         Task<IEnumerable<ProductResponseDto>> GetProductsWithBOMAsync();
         Task<ProductResponseDto?> GetProductWithBOMAsync(string productId);
+        Task<IReadOnlyList<ProcessMaster>> GetOrderedProcessesForProductAsync(string productId);
     }
 }

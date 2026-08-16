@@ -1,6 +1,8 @@
 using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
+using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Production;
+using mes_server.Services.MasterDataService;
 
 namespace mes_server.Services.ProductionService
 {
@@ -8,11 +10,15 @@ namespace mes_server.Services.ProductionService
     {
         private readonly IWorkOrderRepository _workOrderRepository;
         private readonly ILotRepository _lotRepository;
+        private readonly IMasterDataService _masterDataService;
+        private readonly ILotService _lotService;
 
-        public WorkOrderService(IWorkOrderRepository workOrderRepository, ILotRepository lotRepository)
+        public WorkOrderService(IWorkOrderRepository workOrderRepository, ILotRepository lotRepository, IMasterDataService masterDataService, ILotService lotService)
         {
             _workOrderRepository = workOrderRepository;
             _lotRepository = lotRepository;
+            _masterDataService = masterDataService;
+            _lotService = lotService;
         }
 
 
@@ -116,71 +122,49 @@ namespace mes_server.Services.ProductionService
             };
         }
 
-        //public async Task<WorkOrderResponseDto> CreateWorkOrderAsync(WorkOrderCreateDto createDto)
-        //{
-        //    var productBomProcessIds = await GetAllBomProcessIdsAsync(createDto.ProductID);
-        //    int? firstProcess = null;
+        public async Task<WorkOrderResponseDto> CreateWorkOrderAsync(WorkOrderCreateDto createDto)
+        {
+            var processes = await _masterDataService.GetOrderedProcessesForProductAsync(createDto.ProductID);
 
-        //    if (productBomProcessIds.Any())
-        //    {
-        //        var processList = await _processMasterRepository.GetAllAsync();
-        //        firstProcess = processList
-        //            .Where(p => productBomProcessIds.Contains(p.ProcessID))
-        //            .OrderBy(p => p.SequenceOrder)
-        //            .FirstOrDefault()?.ProcessID;
-        //    }
+            var firstProcess = processes.FirstOrDefault() ?? throw new InvalidOperationException("등록된 공정이 존재하지 않아 Lot을 자동 생성할 수 없습니다.");
+            var lotId = await _lotService.GenerateUniqueLotIdAsync();
 
-        //    if (firstProcess == null)
-        //    {
-        //        var processList = await _processMasterRepository.GetAllAsync();
-        //        firstProcess = processList.OrderBy(p => p.SequenceOrder).FirstOrDefault()?.ProcessID;
-        //    }
+            var workOrder = new WorkOrder
+            {
+                ProductID = createDto.ProductID,
+                TargetQty = createDto.TargetQty,
+                StartDate = createDto.StartDate,
+                DueDate = createDto.DueDate,
+                Status = OrderStatus.Created,
+            };
 
-        //    if (firstProcess == null)
-        //    {
-        //        throw new InvalidOperationException("등록된 공정이 존재하지 않아 Lot을 자동 생성할 수 없습니다.");
-        //    }
+            var newLot = new Lot
+            {
+                LotID = lotId,
+                OrderID = workOrder.OrderID,
+                CurrentProcessID = firstProcess.ProcessID,
+                Status = LotStatus.RELEASED
+            };
 
-        //    var workOrder = new WorkOrder
-        //    {
-        //        ProductID = createDto.ProductID,
-        //        TargetQty = createDto.TargetQty,
-        //        StartDate = createDto.StartDate,
-        //        DueDate = createDto.DueDate
-        //    };
+            workOrder.Lots.Add(newLot);
 
-        //    workOrder.Status = OrderStatus.Created;
+            await _workOrderRepository.CreateAsync(workOrder);
+            await _workOrderRepository.SaveChangesAsync();
 
-        //    await _workOrderRepository.CreateAsync(workOrder);
-        //    await _workOrderRepository.SaveChangesAsync();
-
-            
-
-        //    var lotId = await GenerateUniqueLotIdAsync();
-        //    var newLot = new Lot
-        //    {
-        //        LotID = lotId,
-        //        OrderID = workOrder.OrderID,
-        //        CurrentProcessID = firstProcess.Value,
-        //        Status = LotStatus.RELEASED
-        //    };
-        //    await _lotRepository.CreateAsync(newLot);
-        //    await _lotRepository.SaveChangesAsync();
-
-        //    return new WorkOrderResponseDto
-        //    {
-        //        OrderID = workOrder.OrderID,
-        //        ProductID = workOrder.ProductID,
-        //        TargetQty = workOrder.TargetQty,
-        //        TotalGoodQty = workOrder.TotalGoodQty,
-        //        TotalBadQty = workOrder.TotalBadQty,
-        //        Status = workOrder.Status,
-        //        OrderDate = workOrder.OrderDate,
-        //        StartDate = workOrder.StartDate,
-        //        DueDate = workOrder.DueDate,
-        //        LotID = lotId
-        //    };
-        //}
+            return new WorkOrderResponseDto
+            {
+                OrderID = workOrder.OrderID,
+                ProductID = workOrder.ProductID,
+                TargetQty = workOrder.TargetQty,
+                TotalGoodQty = workOrder.TotalGoodQty,
+                TotalBadQty = workOrder.TotalBadQty,
+                Status = workOrder.Status,
+                OrderDate = workOrder.OrderDate,
+                StartDate = workOrder.StartDate,
+                DueDate = workOrder.DueDate,
+                LotID = new List<string> { lotId }
+            };
+        }
 
         public async Task<IEnumerable<WorkOrderResponseDto>> GetAllWorkOrdersAsync()
         {
@@ -198,11 +182,6 @@ namespace mes_server.Services.ProductionService
                 StartDate = order.StartDate,
                 DueDate = order.DueDate,
             }).ToList();
-        }
-
-        public Task<WorkOrderResponseDto> CreateWorkOrderAsync(WorkOrderCreateDto createDto)
-        {
-            throw new NotImplementedException();
         }
     }
 }

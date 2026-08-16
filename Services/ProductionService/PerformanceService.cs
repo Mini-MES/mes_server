@@ -1,5 +1,4 @@
 using mes_server.Hubs;
-using mes_server.Models.Analytics;
 using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
 using mes_server.Models.History;
