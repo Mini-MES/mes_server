@@ -8,7 +8,7 @@ namespace mes_server.Services.EquipmentService
     {
         Task<IEnumerable<EquipmentDto>> GetAllEquipmentAsync();
         Task<EquipmentDto?> GetEquipmentByIdAsync(string equipmentId);
-        Task<bool> ChangeEquipmentStatusAsync(ChangeEquipmentStatusRequest request);
+        Task<bool> ChangeEquipmentStatusAsync(ChangeEquipmentStatusRequest request, bool autoSave = true);
         Task<bool> RegisterDowntimeReasonAsync(RegisterDowntimeReasonRequest request);
         Task<IEnumerable<DowntimeReasonDto>> GetDowntimeReasonsAsync();
         Task<IEnumerable<DowntimeLog>> GetDowntimeLogsByEquipmentAsync(string equipmentId);

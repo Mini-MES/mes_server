@@ -27,11 +27,6 @@ namespace mes_server.Services.ProductionService
                 throw new InvalidOperationException("보류(HOLD) 상태의 Lot은 공정을 이동할 수 없습니다. 보류 해제 또는 재작업 처리가 필요합니다.");
             }
 
-            if (!await IsOrderValid(lot.CurrentProcessID, nextProcessId))
-            {
-                throw new InvalidOperationException("잘못된 공정 순서입니다.");
-            }
-
             lot.CurrentProcessID = nextProcessId;
             await _lotRepository.SaveChangesAsync();
         }

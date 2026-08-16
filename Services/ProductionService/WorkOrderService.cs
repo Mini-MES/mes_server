@@ -193,5 +193,29 @@ namespace mes_server.Services.ProductionService
                 LotID = order.Lots.Select(l => l.LotID).ToList()
             }).ToList();
         }
+
+        public async Task<WorkOrder> StartWorkOrderAsync(
+            int orderId,
+            bool autoSave = true)
+        {
+            var workOrder = await _workOrderRepository.GetByIdAsync(orderId)
+                ?? throw new KeyNotFoundException(
+                    "생산지시를 찾을 수 없습니다.");
+
+            if (workOrder.Status != OrderStatus.Created)
+            {
+                throw new InvalidOperationException(
+                    "생성 상태의 생산지시만 시작할 수 있습니다.");
+            }
+
+            workOrder.Status = OrderStatus.InProgress;
+
+            if (autoSave)
+            {
+                await _workOrderRepository.SaveChangesAsync();
+            }
+
+            return workOrder;
+        }
     }
 }

@@ -1,10 +1,11 @@
 using mes_server.Data;
+using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Repositories.Interface.Production;
-using Microsoft.EntityFrameworkCore;
+using mes_server.Services.EquipmentService;
 using mes_server.Services.InventoryService;
 
 namespace mes_server.Services.ProductionService
@@ -20,6 +21,7 @@ namespace mes_server.Services.ProductionService
         private readonly IInventoryService _inventoryService;
         private readonly IPerformanceService _performanceService;
         private readonly ILotService _lotService;
+        private readonly IEquipmentService _equipmentService;
 
         public ProductionService(
             IWorkOrderService workOrderService,
@@ -29,7 +31,8 @@ namespace mes_server.Services.ProductionService
             MESDbContext context,
             IInventoryService inventoryService,
             IPerformanceService performanceService,
-            ILotService lotService
+            ILotService lotService,
+            IEquipmentService equipmentService
             )
         {
             _workOrderService = workOrderService;
@@ -40,13 +43,12 @@ namespace mes_server.Services.ProductionService
             _performanceService = performanceService;
             _lotService = lotService;
             _context = context;
+            _equipmentService = equipmentService;
         }
 
-        public async Task<string> StartProductionAsync(int orderId)
+        public async Task<StartProductionResponseDto> StartProductionAsync(int orderId, StartProductionDto dto)
         {
-            var order = await _workOrderService.GetWorkOrderByIdAsync(orderId);
-            if (order == null || order.Status == OrderStatus.Completed)
-                throw new InvalidOperationException("진행 불가능한 생산지시입니다.");
+            var order = await _workOrderService.StartWorkOrderAsync(orderId, autoSave : false);
 
             var isAvailable = await _inventoryService.CheckMaterialAvailabilityAsync(order.ProductID, order.TargetQty);
             if (!isAvailable)
@@ -54,35 +56,74 @@ namespace mes_server.Services.ProductionService
                 throw new InvalidOperationException($"생산에 필요한 원자재 재고가 부족하여 생산을 시작할 수 없습니다. (계획 수량: {order.TargetQty} EA)");
             }
 
-            var lots = await _lotRepository.GetLotsByOrderIdAsync(orderId);
-            var lot = lots.FirstOrDefault();
-            if (lot == null)
+            var lot = await _lotRepository.GetByIdAsync(dto.LotId) ?? throw new KeyNotFoundException("선택한 LOT을 찾을 수 없습니다.");
+
+            if (lot.OrderID != orderId)
             {
-                throw new KeyNotFoundException("해당 생산지시에 연결된 Lot이 존재하지 않습니다.");
+                throw new InvalidOperationException(
+                    "선택한 LOT이 해당 생산지시에 속하지 않습니다.");
+            }
+
+            if (lot.Status != LotStatus.RELEASED)
+            {
+                throw new InvalidOperationException(
+                    "대기 상태의 LOT만 생산을 시작할 수 있습니다.");
+            }
+
+            var equipment = await _equipmentRepository.GetByIdAsync(dto.EquipmentID) ?? throw new KeyNotFoundException("선택한 설비를 찾을 수 없습니다.");
+
+            if (!string.IsNullOrEmpty(equipment.CurrentLotId) && equipment.CurrentLotId != lot.LotID)
+            {
+                throw new InvalidOperationException(
+                    "선택한 설비는 이미 다른 LOT을 작업 중입니다.");
+            }
+
+            if (equipment.Status == EquipmentStatus.Maintenance ||
+                equipment.Status == EquipmentStatus.Error ||
+                equipment.Status == EquipmentStatus.Off)
+            {
+                throw new InvalidOperationException(
+                    "선택한 설비는 현재 생산에 사용할 수 없습니다.");
             }
 
             lot.Status = LotStatus.WIP;
-            order.Status = OrderStatus.InProgress;
 
-            var equipment = await _context.Equipments.FirstOrDefaultAsync();
-            if (equipment != null)
+            var statusChanged = await _equipmentService.ChangeEquipmentStatusAsync(
+                new ChangeEquipmentStatusRequest
+                {
+                    EquipmentID = equipment.EquipmentID,
+                    NewStatus = EquipmentStatus.Running,
+                    CurrentLotID = lot.LotID
+                },
+                autoSave: false);
+
+            if (!statusChanged)
             {
-                equipment.Status = EquipmentStatus.Running;
-                equipment.CurrentLotId = lot.LotID;
+                throw new InvalidOperationException(
+                    "설비 상태 변경에 실패했습니다.");
             }
 
             await _equipmentRepository.SaveChangesAsync();
 
-            return lot.LotID;
+            return new StartProductionResponseDto
+            {
+                WorkOrderID = order.OrderID,
+                LotID = lot.LotID,
+                EquipmentID = equipment.EquipmentID
+            };
         }
+
         public async Task MoveProcessAsync(PerformanceRegisterDto perfDto, int nextProcessId, string userId)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
+                if (!await IsOrderValid(perfDto.ProcessID, nextProcessId))
+                {
+                    throw new InvalidOperationException("공정 이동이 불가능합니다.");
+                }
                 await _performanceService.RegisterPerformanceAsync(perfDto, userId);
-                await IsOrderValid(perfDto.ProcessID, nextProcessId);
                 await _lotService.ChangeLotProcessAsync(perfDto.LotID, nextProcessId);
                 await transaction.CommitAsync();
 
