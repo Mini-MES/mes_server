@@ -81,11 +81,11 @@ namespace mes_server.Controllers
 
                 try
                 {
-                    await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { orderId, status = "InProgress" });
+                    await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { orderId = result.WorkOrderID, status = "InProgress" });
                     await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId = result.LotID, status = "WIP" });
                     await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new
                     {
-                        equipmentID = "CNC01",
+                        equipmentID = result.EquipmentID,
                         status = "RUNNING",
                         currentLotID = result.LotID
                     });

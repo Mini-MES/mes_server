@@ -25,7 +25,7 @@ namespace mes_server.Services.EquipmentService
             _hubContext = hubContext;
         }
 
-        public async Task<bool> ChangeEquipmentStatusAsync(ChangeEquipmentStatusRequest request)
+        public async Task<bool> ChangeEquipmentStatusAsync(ChangeEquipmentStatusRequest request, bool autoSave = true)
         {
             var equipment = await _equipmentRepository.GetByIdAsync(request.EquipmentID);
             if (equipment == null) return false;
@@ -34,7 +34,20 @@ namespace mes_server.Services.EquipmentService
             var newStatus = request.NewStatus;
             var now = DateTime.UtcNow;
 
-            if (oldStatus == newStatus) return true;
+            if (newStatus == EquipmentStatus.Running &&
+            string.IsNullOrEmpty(request.CurrentLotID) &&
+            string.IsNullOrEmpty(equipment.CurrentLotId))
+            {
+                throw new InvalidOperationException(
+                    "설비를 가동하려면 LOT을 지정해야 합니다.");
+            }
+
+            var lotChanged =!string.IsNullOrEmpty(request.CurrentLotID) && equipment.CurrentLotId != request.CurrentLotID;
+
+            if (oldStatus == newStatus && !lotChanged)
+            {
+                return true;
+            }
 
             // RUNNING이 아니면 전부 비가동(Downtime) 상태로 간주
             bool isOldDowntime = oldStatus != EquipmentStatus.Running;
@@ -74,35 +87,32 @@ namespace mes_server.Services.EquipmentService
             {
                 equipment.CurrentLotId = request.CurrentLotID;
             }
-            else if (newStatus == EquipmentStatus.Running && string.IsNullOrEmpty(equipment.CurrentLotId))
-            {
-                var activeLot = await _context.Lots.FirstOrDefaultAsync(l => l.Status == mes_server.Models.Enum.LotStatus.WIP || l.Status == mes_server.Models.Enum.LotStatus.RELEASED);
-                if (activeLot != null)
-                {
-                    equipment.CurrentLotId = activeLot.LotID;
-                }
-            }
+       
             equipment.LastStatusChangedAt = now;
 
-            await _context.SaveChangesAsync();
+            if(autoSave)
+            {
+                await _equipmentRepository.SaveChangesAsync();
 
-            try
-            {
-                await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new EquipmentDto
+                try
                 {
-                    EquipmentID = equipment.EquipmentID,
-                    EquipmentName = equipment.Name,
-                    Status = equipment.Status,
-                    CurrentLotID = equipment.CurrentLotId,
-                    TotalRunningSeconds = equipment.TotalRunningSeconds,
-                    TotalDowntimeSeconds = equipment.TotalDowntimeSeconds,
-                    LastStatusChangedAt = equipment.LastStatusChangedAt
-                });
+                    await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new EquipmentDto
+                    {
+                        EquipmentID = equipment.EquipmentID,
+                        EquipmentName = equipment.Name,
+                        Status = equipment.Status,
+                        CurrentLotID = equipment.CurrentLotId,
+                        TotalRunningSeconds = equipment.TotalRunningSeconds,
+                        TotalDowntimeSeconds = equipment.TotalDowntimeSeconds,
+                        LastStatusChangedAt = equipment.LastStatusChangedAt
+                    });
+                }
+                catch
+                {
+
+                }
             }
-            catch
-            {
-                
-            }
+            
 
             return true;
         }
