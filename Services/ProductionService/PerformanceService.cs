@@ -82,7 +82,7 @@ namespace mes_server.Services.ProductionService
             };
 
             await _performanceRepository.CreateAsync(perf);
-            await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.GoodQty, autoSave: false);
+            await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.InputQty, autoSave: false);
 
             workOrder.TotalBadQty += perf.BadQty;
 
@@ -147,7 +147,9 @@ namespace mes_server.Services.ProductionService
             }
 
             var performances = await _performanceRepository.GetPerformancesByLotIdAsync(lot.LotID);
-            int currentGoodQty = performances.Sum(p => p.GoodQty);
+            int currentGoodQty = performances
+                .Where(p => p.ProcessID == lot.CurrentProcessID)
+                .Sum(p => p.GoodQty);
             int targetQty = (lot.WorkOrder?.TargetQty > 0) ? lot.WorkOrder.TargetQty : 20;
 
             if (currentGoodQty >= targetQty)
@@ -173,12 +175,14 @@ namespace mes_server.Services.ProductionService
             _logger.LogInformation("✨ [OPC UA Counter] {EquipmentId} ➔ LOT [{LotId}] 자동 실적 등록 완료 ({Current}/{Target}EA)",
                 equipmentId, lot.LotID, currentGoodQty + 1, targetQty);
 
-            int updatedGoodQty = currentGoodQty + 1;
-            bool isDone = updatedGoodQty >= targetQty;
+            int updatedGoodQty = currentGoodQty + perf.GoodQty;
+            var actualLotStatus = lot.Status;
+            var actualWorkOrderStatus = lot.WorkOrder?.Status ?? OrderStatus.InProgress;
+            var actualTotalGoodQty = lot.WorkOrder?.TotalGoodQty ?? updatedGoodQty;
 
             await _hubContext.Clients.All.SendAsync("LotUpdated", new
             {
-                status = isDone ? LotStatus.DONE.ToString() : LotStatus.WIP.ToString(),
+                status = actualLotStatus.ToString(),
                 lotId = lot.LotID
             });
 
@@ -190,8 +194,8 @@ namespace mes_server.Services.ProductionService
                 await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new
                 {
                     orderId = lot.OrderID,
-                    totalGoodQty = updatedGoodQty,
-                    status = isDone ? OrderStatus.Completed.ToString() : OrderStatus.InProgress.ToString()
+                    totalGoodQty = actualTotalGoodQty,
+                    status = actualWorkOrderStatus.ToString()
                 });
             }
 
