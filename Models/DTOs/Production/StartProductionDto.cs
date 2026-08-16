@@ -3,5 +3,6 @@
     public class StartProductionDto
     {
         public string lotId { get; set; } = null!;
+        public string EquipmentID { get; set; } = null!;
     }
 }
