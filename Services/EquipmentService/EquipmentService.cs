@@ -326,5 +326,55 @@ namespace mes_server.Services.EquipmentService
                 };
             });
         }
+
+        public async Task BroadcastTelemetryAsync(double sinusoidValue, DateTime timestamp)
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var allEquipments = await _equipmentRepository.GetAllAsync();
+            var dailyProds = await _context.DailyEquipmentProductions.AsNoTracking()
+                .Where(d => d.WorkDate == today)
+                .ToListAsync();
+
+            var telemetryList = new List<object>();
+
+            foreach (var eq in allEquipments)
+            {
+                var daily = dailyProds.FirstOrDefault(d => d.EquipmentID == eq.EquipmentID);
+                int eqQty = daily?.GoodQty ?? 0;
+
+                if (eqQty == 0 && !string.IsNullOrEmpty(eq.CurrentLotId))
+                {
+                    eqQty = await _context.Performances
+                        .Where(p => p.LotID == eq.CurrentLotId)
+                        .SumAsync(p => p.GoodQty);
+                }
+
+                telemetryList.Add(new
+                {
+                    EquipmentId = eq.EquipmentID,
+                    Temperature = eq.EquipmentID == "CNC01"
+                        ? Math.Round(65.0 + (sinusoidValue * 15.0), 1)
+                        : Math.Round(25.0 + (sinusoidValue * 1.5), 1),
+                    Status = eq.Status,
+                    TotalCount = eqQty,
+                    Timestamp = timestamp
+                });
+            }
+
+            await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetryList);
+        }
+
+        public async Task AddRunningTimeAsync(string equipmentId, int seconds = 3, bool autoSave = true)
+        {
+            var equipment = await _equipmentRepository.GetByIdAsync(equipmentId);
+            if (equipment != null)
+            {
+                equipment.TotalRunningSeconds += seconds;
+                if (autoSave)
+                {
+                    await _equipmentRepository.SaveChangesAsync();
+                }
+            }
+        }
     }
 }

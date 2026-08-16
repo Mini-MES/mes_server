@@ -1,4 +1,4 @@
-﻿using mes_server.Models.Analytics;
+using mes_server.Models.Analytics;
 using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
 
@@ -15,7 +15,7 @@ namespace mes_server.Services.EquipmentService
             _equipmentRepository = equipmentRepository;
         }
 
-        public async Task CreateDailyEquipmentProductionAsync(string targetEquipmentId, DateOnly today, int goodQty, int badQty)
+        public async Task CreateDailyEquipmentProductionAsync(string targetEquipmentId, DateOnly today, int goodQty, int badQty, bool autoSave = true)
         {
             var daily = await _dailyEquipmentProductionRepository.FindAsync(d => d.EquipmentID == targetEquipmentId && d.WorkDate == today);
 
@@ -49,7 +49,10 @@ namespace mes_server.Services.EquipmentService
                 daily.DowntimeMinutes = downMin;
             }
 
-            await _dailyEquipmentProductionRepository.SaveChangesAsync();
+            if (autoSave)
+            {
+                await _dailyEquipmentProductionRepository.SaveChangesAsync();
+            }
         }
     }
 }

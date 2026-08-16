@@ -43,7 +43,7 @@ namespace mes_server.Services.InventoryService
             await _context.SaveChangesAsync();
         }
 
-        public async Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty)
+        public async Task ConsumeMaterialByProcessAsync(int workOrderId, int processId, int productionQty, bool autoSave = true)
         {
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
             if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
@@ -64,10 +64,14 @@ namespace mes_server.Services.InventoryService
                 int deductQty = bom.RequiredQty * productionQty;
                 product.StockQty = Math.Max(0, product.StockQty - deductQty);
             }
-            await _context.SaveChangesAsync();
+
+            if (autoSave)
+            {
+                await _context.SaveChangesAsync();
+            }
         }
 
-        public async Task ReceiveFinishedProductAsync(int workOrderId, int productionQty)
+        public async Task ReceiveFinishedProductAsync(int workOrderId, int productionQty, bool autoSave = true)
         {
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
             if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
@@ -77,10 +81,14 @@ namespace mes_server.Services.InventoryService
             {
                 product.StockQty += productionQty;
             }
-            await _context.SaveChangesAsync();
+
+            if (autoSave)
+            {
+                await _context.SaveChangesAsync();
+            }
         }
 
-        public async Task ReceiveSemiFinishedProductAsync(int workOrderId, int processId, int productionQty)
+        public async Task ReceiveSemiFinishedProductAsync(int workOrderId, int processId, int productionQty, bool autoSave = true)
         {
             var workOrder = await _workOrderRepository.GetByIdAsync(workOrderId);
             if (workOrder == null) throw new KeyNotFoundException("생산지시서를 찾을 수 없습니다.");
@@ -98,11 +106,14 @@ namespace mes_server.Services.InventoryService
             }
             else
             {
-                await ReceiveFinishedProductAsync(workOrderId, productionQty);
+                await ReceiveFinishedProductAsync(workOrderId, productionQty, autoSave);
                 return;
             }
 
-            await _context.SaveChangesAsync();
+            if (autoSave)
+            {
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task<IEnumerable<ProductMaster>> GetLowStockMaterialsAsync()
