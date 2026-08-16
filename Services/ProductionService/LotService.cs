@@ -1,7 +1,6 @@
 ﻿using mes_server.Models.Enum;
 using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Production;
-using Microsoft.EntityFrameworkCore;
 
 namespace mes_server.Services.ProductionService
 {
@@ -28,10 +27,10 @@ namespace mes_server.Services.ProductionService
                 throw new InvalidOperationException("보류(HOLD) 상태의 Lot은 공정을 이동할 수 없습니다. 보류 해제 또는 재작업 처리가 필요합니다.");
             }
 
-            //if (!await IsOrderValid(lot.CurrentProcessID, nextProcessId))
-            //{
-            //    throw new InvalidOperationException("잘못된 공정 순서입니다.");
-            //}
+            if (!await IsOrderValid(lot.CurrentProcessID, nextProcessId))
+            {
+                throw new InvalidOperationException("잘못된 공정 순서입니다.");
+            }
 
             lot.CurrentProcessID = nextProcessId;
             await _lotRepository.SaveChangesAsync();
@@ -65,18 +64,9 @@ namespace mes_server.Services.ProductionService
             return await _lotRepository.GetAllAsync();
         }
 
-        private string GenerateLotId()
+        private static string GenerateLotId()
         {
-            var random = new Random();
-
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-            var stringPart = new string(Enumerable.Repeat(chars, 4)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
-
-            var numberPart = random.Next(100).ToString("D2");
-
-            return stringPart + numberPart;
+            return $"LOT-{Guid.NewGuid():N}"[..20].ToUpperInvariant();
         }
 
     }

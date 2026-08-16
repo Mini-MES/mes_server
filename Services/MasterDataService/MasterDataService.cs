@@ -213,5 +213,45 @@ namespace mes_server.Services.MasterDataService
 
             return product != null ? MapToProductResponseDto(product) : null;
         }
+
+        public async Task<IReadOnlyList<ProcessMaster>>
+    GetOrderedProcessesForProductAsync(string productId)
+        {
+            var processIds = new HashSet<int>();
+            var productQueue = new Queue<string>();
+            var visitedProducts = new HashSet<string>();
+
+            productQueue.Enqueue(productId);
+            visitedProducts.Add(productId);
+
+            while (productQueue.Count > 0)
+            {
+                var currentProductId = productQueue.Dequeue();
+                var boms = await _bomRepository
+                    .GetAllBomsByProductIdAsync(currentProductId);
+
+                foreach (var bom in boms)
+                {
+                    processIds.Add(bom.ProcessID);
+
+                    if (visitedProducts.Add(bom.ChildProductID))
+                    {
+                        productQueue.Enqueue(bom.ChildProductID);
+                    }
+                }
+            }
+
+            if (processIds.Count == 0)
+            {
+                return Array.Empty<ProcessMaster>();
+            }
+
+            var processes = await _processMasterRepository.GetAllAsync();
+
+            return processes
+                .Where(p => processIds.Contains(p.ProcessID))
+                .OrderBy(p => p.SequenceOrder)
+                .ToList();
+        }
     }
 }
