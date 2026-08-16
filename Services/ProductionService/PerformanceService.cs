@@ -6,7 +6,6 @@ using mes_server.Models.MasterData;
 using mes_server.Models.Production;
 using mes_server.Repositories.Interface.Generic;
 using mes_server.Repositories.Interface.History;
-using mes_server.Repositories.Interface.MasterData;
 using mes_server.Repositories.Interface.Production;
 using mes_server.Services.EquipmentService;
 using mes_server.Services.InventoryService;
@@ -111,7 +110,6 @@ namespace mes_server.Services.ProductionService
 
                 if (workOrder.Status != OrderStatus.Completed && workOrder.TotalGoodQty >= workOrder.TargetQty)
                 {
-                    workOrder.Status = OrderStatus.Completed;
                     await _workOrderService.CompleteWorkOrderAsync(workOrder.OrderID, autoSave: false);
                 }
             }

@@ -124,6 +124,16 @@ namespace mes_server.Services.ProductionService
 
         public async Task<WorkOrderResponseDto> CreateWorkOrderAsync(WorkOrderCreateDto createDto)
         {
+            if (createDto.TargetQty <= 0)
+            {
+                throw new ArgumentException("목표 수량은 1 이상이어야 합니다.");
+            }
+
+            if (createDto.DueDate < createDto.StartDate)
+            {
+                throw new ArgumentException("완료 예정일은 시작일보다 빠를 수 없습니다.");
+            }
+
             var processes = await _masterDataService.GetOrderedProcessesForProductAsync(createDto.ProductID);
 
             var firstProcess = processes.FirstOrDefault() ?? throw new InvalidOperationException("등록된 공정이 존재하지 않아 Lot을 자동 생성할 수 없습니다.");
@@ -141,7 +151,6 @@ namespace mes_server.Services.ProductionService
             var newLot = new Lot
             {
                 LotID = lotId,
-                OrderID = workOrder.OrderID,
                 CurrentProcessID = firstProcess.ProcessID,
                 Status = LotStatus.RELEASED
             };
@@ -181,6 +190,7 @@ namespace mes_server.Services.ProductionService
                 OrderDate = order.OrderDate,
                 StartDate = order.StartDate,
                 DueDate = order.DueDate,
+                LotID = order.Lots.Select(l => l.LotID).ToList()
             }).ToList();
         }
     }
