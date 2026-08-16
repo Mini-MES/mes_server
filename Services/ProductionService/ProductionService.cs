@@ -41,19 +41,6 @@ namespace mes_server.Services.ProductionService
             _lotService = lotService;
             _context = context;
         }
-        
-
-        public async Task<bool> IsOrderValid(int currentProcessId, int nextProcessId)
-        {
-            var currentProc = await _processMasterRepository.GetByIdAsync(currentProcessId);
-            var nextProc = await _processMasterRepository.GetByIdAsync(nextProcessId);
-
-            if (currentProc == null || nextProc == null)
-            {
-                throw new KeyNotFoundException("공정 정보를 찾을 수 없습니다.");
-            }
-            return nextProc.SequenceOrder > currentProc.SequenceOrder;
-        }
 
         public async Task<string> StartProductionAsync(int orderId)
         {
@@ -95,6 +82,7 @@ namespace mes_server.Services.ProductionService
             try
             {
                 await _performanceService.RegisterPerformanceAsync(perfDto, userId);
+                await IsOrderValid(perfDto.ProcessID, nextProcessId);
                 await _lotService.ChangeLotProcessAsync(perfDto.LotID, nextProcessId);
                 await transaction.CommitAsync();
 
@@ -121,6 +109,18 @@ namespace mes_server.Services.ProductionService
 
             lot.Status = LotStatus.WIP;
             await _lotRepository.SaveChangesAsync();
+        }
+
+        private async Task<bool> IsOrderValid(int currentProcessId, int nextProcessId)
+        {
+            var currentProc = await _processMasterRepository.GetByIdAsync(currentProcessId);
+            var nextProc = await _processMasterRepository.GetByIdAsync(nextProcessId);
+
+            if (currentProc == null || nextProc == null)
+            {
+                throw new KeyNotFoundException("공정 정보를 찾을 수 없습니다.");
+            }
+            return nextProc.SequenceOrder > currentProc.SequenceOrder;
         }
     }
 }
