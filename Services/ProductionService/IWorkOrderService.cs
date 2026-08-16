@@ -1,4 +1,5 @@
 using mes_server.Models.DTOs.Production;
+using mes_server.Models.Production;
 
 namespace mes_server.Services.ProductionService
 {
@@ -10,5 +11,6 @@ namespace mes_server.Services.ProductionService
         Task UpdateWorkOrderAsync(int orderId, WorkOrderUpdateDto updateDto);
         Task DeleteWorkOrderAsync(int orderId);
         Task<WorkOrderResponseDto?> GetWorkOrderByIdAsync(int orderId);
+        Task<WorkOrder> StartWorkOrderAsync(int orderId, bool autoSave = true);
     }
 }

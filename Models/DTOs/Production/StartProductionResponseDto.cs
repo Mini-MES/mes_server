@@ -2,7 +2,7 @@
 {
     public class StartProductionResponseDto
     {
-        public int WorkOrderID { get; set; };
+        public int WorkOrderID { get; set; }
         public string LotID { get; set; } = null!;
         public string EquipmentID { get; set; } = null!;
     }
