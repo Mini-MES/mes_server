@@ -106,7 +106,10 @@ namespace mes_server.Services.ProductionService
             try
             {
                 await _performanceService.RegisterPerformanceAsync(perfDto, userId);
-                await IsOrderValid(perfDto.ProcessID, nextProcessId);
+                if(!await IsOrderValid(perfDto.ProcessID, nextProcessId))
+                {
+                    throw new InvalidOperationException("공정 이동이 불가능합니다.");
+                }
                 await _lotService.ChangeLotProcessAsync(perfDto.LotID, nextProcessId);
                 await transaction.CommitAsync();
 

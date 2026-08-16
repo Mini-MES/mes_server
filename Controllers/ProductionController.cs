@@ -73,21 +73,21 @@ namespace mes_server.Controllers
 
         // 생산 시작
         [HttpPost("start/{orderId}")]
-        public async Task<IActionResult> StartProduction([FromRoute] int orderId)
+        public async Task<IActionResult> StartProduction([FromRoute] int orderId, [FromBody] StartProductionDto dto)
         {
             try
             {
-                var result = await _productionService.StartProductionAsync(orderId);
+                var result = await _productionService.StartProductionAsync(orderId, dto);
 
                 try
                 {
                     await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new { orderId, status = "InProgress" });
-                    await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId = result, status = "WIP" });
+                    await _hubContext.Clients.All.SendAsync("LotUpdated", new { lotId = result.LotID, status = "WIP" });
                     await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new
                     {
                         equipmentID = "CNC01",
                         status = "RUNNING",
-                        currentLotID = result
+                        currentLotID = result.LotID
                     });
                 }
                 catch (Exception ex)
