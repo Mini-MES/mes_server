@@ -21,6 +21,7 @@ namespace mes_server.Services.Generic
         public async Task DeleteAsync(T entity)
         {
             await _repository.DeleteAsync(entity);
+            await _repository.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<T>> GetAllAsync()

@@ -65,6 +65,8 @@ namespace mes_server.Services.ProductionService
 
         public async Task<Performance> RegisterPerformanceAsync(PerformanceRegisterDto registerDto, string userId, bool autoSave = true, string? equipmentId = null)
         {
+            var (lot, workOrder) = await ValidateProductionAsync(registerDto);
+
             var perf = new Performance
             {
                 WorkOrderID = registerDto.WorkOrderID,
@@ -78,18 +80,17 @@ namespace mes_server.Services.ProductionService
                 BadQty = registerDto.BadQty,
                 WorkDate = DateTime.Now
             };
-            var (lot, workOrder) = await ValidateProductionAsync(registerDto);
 
             await _performanceRepository.CreateAsync(perf);
             await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.GoodQty, autoSave: false);
 
             workOrder.TotalBadQty += perf.BadQty;
 
-            if (perf.BadQty > 0 && lot != null)
+            if (perf.BadQty > 0)
             {
                 lot.Status = LotStatus.HOLD;
             }
-            else if (lot != null && lot.Status == LotStatus.RELEASED)
+            else if (lot.Status == LotStatus.RELEASED)
             {
                 lot.Status = LotStatus.WIP;
             }
@@ -167,7 +168,6 @@ namespace mes_server.Services.ProductionService
             var perf = await RegisterPerformanceAsync(registerDto, userId, autoSave: false, equipmentId);
 
             await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: 3, autoSave: false);
-
             await _performanceRepository.SaveChangesAsync();
 
             _logger.LogInformation("✨ [OPC UA Counter] {EquipmentId} ➔ LOT [{LotId}] 자동 실적 등록 완료 ({Current}/{Target}EA)",
@@ -209,17 +209,58 @@ namespace mes_server.Services.ProductionService
 
         private async Task<(Lot lot, WorkOrder workOrder)> ValidateProductionAsync(PerformanceRegisterDto registerDto)
         {
-            var lot = await _lotRepository.GetByIdAsync(registerDto.LotID);
-
-            if (lot == null)
+            if (registerDto.InputQty < 0 ||
+        registerDto.GoodQty < 0 ||
+        registerDto.BadQty < 0)
             {
-                throw new ArgumentException($"Lot with ID {registerDto.LotID} does not exist.");
+                throw new ArgumentException(
+                    "투입수량, 양품수량, 불량수량은 음수일 수 없습니다.");
             }
 
-            var workOrder = await _workOrderRepository.GetByIdAsync(registerDto.WorkOrderID);
+            if (registerDto.GoodQty + registerDto.BadQty > registerDto.InputQty)
+            {
+                throw new ArgumentException(
+                    "양품수량과 불량수량의 합은 투입수량을 초과할 수 없습니다.");
+            }
 
-            if (workOrder == null) {
-                throw new ArgumentException($"Work order with ID {registerDto.WorkOrderID} does not exist.");
+            if (registerDto.BadQty > 0 && registerDto.ReasonCode == null)
+            {
+                throw new ArgumentException(
+                    "불량수량이 있으면 불량 사유를 입력해야 합니다.");
+            }
+
+            var lot = await _lotRepository.GetByIdAsync(registerDto.LotID)
+                ?? throw new KeyNotFoundException(
+                    $"LOT ID '{registerDto.LotID}'를 찾을 수 없습니다.");
+
+            var workOrder =
+                await _workOrderRepository.GetByIdAsync(registerDto.WorkOrderID)
+                ?? throw new KeyNotFoundException(
+                    $"생산지시 ID '{registerDto.WorkOrderID}'를 찾을 수 없습니다.");
+
+            if (lot.OrderID != workOrder.OrderID)
+            {
+                throw new InvalidOperationException(
+                    "선택한 LOT이 해당 생산지시에 속하지 않습니다.");
+            }
+
+            if (lot.CurrentProcessID != registerDto.ProcessID)
+            {
+                throw new InvalidOperationException(
+                    "입력한 공정이 LOT의 현재 공정과 일치하지 않습니다.");
+            }
+
+            if (workOrder.Status == OrderStatus.Completed)
+            {
+                throw new InvalidOperationException(
+                    "완료된 생산지시에는 실적을 등록할 수 없습니다.");
+            }
+
+            if (lot.Status != LotStatus.RELEASED &&
+                lot.Status != LotStatus.WIP)
+            {
+                throw new InvalidOperationException(
+                    "대기 또는 진행 중인 LOT에만 실적을 등록할 수 있습니다.");
             }
 
             return (lot, workOrder);
