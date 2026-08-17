@@ -51,7 +51,7 @@ namespace mes_server
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IBOMRepository, BOMRepository>();
             builder.Services.AddScoped<IToolHistoryRepository, ToolHistoryRepository>();
-            
+            builder.Services.AddScoped<IBadReasonMasterRepository, BadReasonMasterRepository>();
 
             builder.Services.AddScoped(typeof(IGenericService<>), typeof(BaseSerivce<>));
 
