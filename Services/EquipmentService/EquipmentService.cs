@@ -14,13 +14,15 @@ namespace mes_server.Services.EquipmentService
     {
         private readonly IGenericRepository<Equipment> _equipmentRepository;
         private readonly IGenericRepository<DowntimeReasonMaster> _downtimeReasonRepository;
+        private readonly ILogger<EquipmentService> _logger;
         private readonly MESDbContext _context;
         private readonly IHubContext<MesHub> _hubContext;
 
-        public EquipmentService(IGenericRepository<Equipment> equipmentRepository, IGenericRepository<DowntimeReasonMaster> downtimeReasonRepository, MESDbContext context, IHubContext<MesHub> hubContext)
+        public EquipmentService(IGenericRepository<Equipment> equipmentRepository, IGenericRepository<DowntimeReasonMaster> downtimeReasonRepository, ILogger<EquipmentService> logger, MESDbContext context, IHubContext<MesHub> hubContext)
         {
             _equipmentRepository = equipmentRepository;
             _downtimeReasonRepository = downtimeReasonRepository;
+            _logger = logger;
             _context = context;
             _hubContext = hubContext;
         }

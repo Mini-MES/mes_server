@@ -1,8 +1,8 @@
 using mes_server.Models.DTOs.MasterData;
-using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Services.EquipmentService;
 using mes_server.Services.ProductionService;
+using System.Globalization;
 
 namespace mes_server.Services.OpcService
 {
@@ -11,8 +11,6 @@ namespace mes_server.Services.OpcService
         private readonly IPerformanceService _performanceService;
         private readonly IEquipmentService _equipmentService;
         private readonly ILogger<OpcEventService> _logger;
-
-        private const string DemoEquipmentId = "CNC01";
 
         public OpcEventService(
             IPerformanceService performanceService,
@@ -24,76 +22,95 @@ namespace mes_server.Services.OpcService
             _logger = logger;
         }
 
-        public async Task HandleTagChangedAsync(string EquipmentId, OpcUaTagType TagType, string NodeId, object value, DateTime timestamp)
+        public async Task HandleTagChangedAsync(OpcUaTagEvent tagEvent, long counterDelta = 0)
         {
-            switch (TagType)
+            switch (tagEvent.TagType)
             {
                 case OpcUaTagType.Counter:
-                    await HandleCounterAsync(timestamp);
+                    await HandleCounterAsync(tagEvent, counterDelta);
                     break;
 
                 case OpcUaTagType.Temperature:
-                    await HandleTemperatureAsync(value, timestamp);
+                    await HandleTemperatureAsync(tagEvent);
                     break;
 
-                case OpcUaTagType.EquipmentStatus:
-                    await HandleEquipmentStatusAsync(value, timestamp);
+                case OpcUaTagType.Running:
+                    await HandleEquipmentStatusAsync(tagEvent);
                     break;
+
+                default:
+                    throw new InvalidOperationException($"지원하지 않는 OPC UA TagType입니다: {tagEvent.TagType}");
             }
+
         }
 
-        private async Task HandleCounterAsync(DateTime timestamp)
+        private async Task HandleCounterAsync(OpcUaTagEvent opcUaTagEvent, long counterDelta)
         {
+            if(counterDelta <= 0)
+            {
+                return;
+            }
+
+            if (counterDelta > int.MaxValue)
+            {
+                throw new OverflowException($"Counter 증가량이 허용 범위를 초과했습니다: Equipment={opcUaTagEvent.EquipmentId}, Delta={counterDelta}");
+            }
+
+            var performance = await _performanceService.RecordAutoProductionAsync(opcUaTagEvent.EquipmentId, (int)counterDelta);
+
+            if (performance == null)
+            {
+                _logger.LogDebug("OPC Counter 실적 등록 생략: Equipment={EquipmentId}, Delta={Delta}", opcUaTagEvent.EquipmentId, counterDelta);
+
+                return;
+            }
+
+            _logger.LogInformation(
+                "OPC Counter 실적 전달 완료: Equipment={EquipmentId}, Delta={Delta}", opcUaTagEvent.EquipmentId, counterDelta);
+        }
+
+        private async Task HandleTemperatureAsync(OpcUaTagEvent opcUaTagEvent)
+        {
+            
             try
             {
-                await _performanceService.RecordAutoProductionAsync(DemoEquipmentId);
+                double temperature = Convert.ToDouble(opcUaTagEvent.Value, CultureInfo.InvariantCulture);
+                await _equipmentService.BroadcastTelemetryAsync(opcUaTagEvent.EquipmentId, temperature, opcUaTagEvent.Timestamp); ;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "⚠️ [OpcEventService] Counter 이벤트 처리 중 오류 발생");
+                _logger.LogError(ex, "⚠️ [OpcEventService] 온도 처리 중 오류 발생");
             }
         }
 
-        private async Task HandleTemperatureAsync(object value, DateTime timestamp)
+        private async Task HandleEquipmentStatusAsync(OpcUaTagEvent opcUaTagEvent)
         {
             try
             {
-                if (double.TryParse(value?.ToString(), out double sVal))
+                bool isRunning;
+                if (opcUaTagEvent.Value is bool booleanValue)
                 {
-                    await _equipmentService.BroadcastTelemetryAsync(sVal, timestamp);
+                    isRunning = booleanValue;
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "⚠️ [OpcEventService] Sinusoid 온도 처리 중 오류 발생");
-            }
-        }
-
-        private async Task HandleEquipmentStatusAsync(object value, DateTime timestamp)
-        {
-            try
-            {
-                var isRunning = false;
-                if (value is bool bVal)
+                else if (!bool.TryParse(opcUaTagEvent.Value?.ToString(), out isRunning))
                 {
-                    isRunning = bVal;
-                }
-                else if (int.TryParse(value?.ToString(), out int iVal))
-                {
-                    isRunning = iVal > 0;
-                }
-                else if (double.TryParse(value?.ToString(), out double dVal))
-                {
-                    isRunning = dVal > 0;
+                    throw new InvalidCastException($"Running 값을 Boolean으로 변환할 수 없습니다: Equipment={opcUaTagEvent.EquipmentId}, Value={opcUaTagEvent.Value}");
                 }
 
                 var status = isRunning ? EquipmentStatus.Running : EquipmentStatus.Idle;
-
-                await _equipmentService.ChangeEquipmentStatusAsync(new ChangeEquipmentStatusRequest
+                var changed = await _equipmentService.ChangeEquipmentStatusAsync(new ChangeEquipmentStatusRequest
                 {
-                    EquipmentID = DemoEquipmentId,
+                    EquipmentID = opcUaTagEvent.EquipmentId,
                     NewStatus = status
                 });
+
+                if (!changed)
+                {
+                    throw new KeyNotFoundException(
+                        $"OPC 상태 변경 대상 설비를 찾을 수 없습니다: {opcUaTagEvent.EquipmentId}");
+                }
+
+                _logger.LogInformation("OPC 설비 상태 반영: Equipment={EquipmentId}, Running={Running}, Status={Status}", opcUaTagEvent.EquipmentId, isRunning, status);
             }
             catch (Exception ex)
             {
