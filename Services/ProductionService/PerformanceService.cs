@@ -215,7 +215,7 @@ namespace mes_server.Services.ProductionService
             {
                 status = "UPDATED",
                 lotId = lot.LotID,
-                goodIncrement = 1,
+                goodIncrement = actualProductionQty,
                 badIncrement = 0,
                 equipmentId = equipmentId
             });

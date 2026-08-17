@@ -337,7 +337,7 @@ namespace mes_server.Services.EquipmentService
                 return;
             }
 
-            var today = DateOnly.FromDateTime(DateTime.Today);
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
             var daily = await _context.DailyEquipmentProductions
                 .AsNoTracking()

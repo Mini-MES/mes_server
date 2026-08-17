@@ -193,15 +193,6 @@ namespace mes_server.Services.OpcService
 
             _logger.LogInformation("OPC UA 클라이언트 인증서 준비 완료: Subject={Subject}, Thumbprint={Thumbprint}",clientCertificate.Subject,clientCertificate.Thumbprint);
 
-            if (_settings.AutoAcceptCertificates)
-            {
-                config.CertificateValidator.CertificateValidation +=
-                    (_, eventArgs) =>
-                    {
-                        eventArgs.Accept = true;
-                    };
-            }
-
             return config;
         }
 
@@ -272,12 +263,12 @@ namespace mes_server.Services.OpcService
         {
             if (string.IsNullOrWhiteSpace(_settings.ServerURL))
             {
-                throw new InvalidOperationException("OpcUa:ServerUrl 설정이 없습니다.");
+                throw new InvalidOperationException("OPC_UA:ServerURL 설정이 없습니다.");
             }
 
             if (string.IsNullOrWhiteSpace(_settings.ApplicationName))
             {
-                throw new InvalidOperationException("OpcUa:ApplicationName 설정이 없습니다.");
+                throw new InvalidOperationException("OPC_UA:ApplicationName 설정이 없습니다.");
             }
 
             if (string.IsNullOrWhiteSpace(_settings.Username) || string.IsNullOrWhiteSpace(_settings.Password))
@@ -338,6 +329,16 @@ namespace mes_server.Services.OpcService
 
             if (dataValue?.Value == null)
             {
+                return;
+            }
+
+            if (!StatusCode.IsGood(dataValue.StatusCode))
+            {
+                _logger.LogWarning(
+                    "OPC UA 품질 불량 데이터 제외: Node={NodeId}, Status={StatusCode}",
+                    monitoredItem.StartNodeId,
+                    dataValue.StatusCode);
+
                 return;
             }
 
