@@ -6,11 +6,7 @@ namespace mes_server.Services.OpcService
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<OpcUaBackgroundService> _logger;
 
-        // Counter: 생산 펄스 동시성 제어 및 순차 처리 보장
         private readonly SemaphoreSlim _counterLock = new(1, 1);
-
-        // Sinusoid: 이전 텔레메트리 전송 중일 경우 중복 방지 (Throttling)
-        private readonly SemaphoreSlim _telemetryLock = new(1, 1);
 
         public OpcUaBackgroundService(
             IOpcUaService opcUaService,
@@ -26,20 +22,20 @@ namespace mes_server.Services.OpcService
         {
             _logger.LogInformation("🚀 [OPC UA Pulse 수집 서비스] 실시간 생산 연동 가동");
 
-            _opcUaService.OnDataReceived += async (tagName, value, timestamp) =>
+            _opcUaService.OnDataReceived += async (tagEvent) =>
             {
                 if (stoppingToken.IsCancellationRequested) return;
 
                 try
                 {
-                    switch (tagName)
+                    switch (tagEvent.TagName)
                     {
                         case "Counter":
                             // 실적 카운트는 데이터 누락 없도록 락 획득 후 순차 실행
                             await _counterLock.WaitAsync(stoppingToken);
                             try
                             {
-                                await DispatchEventAsync(tagName, value, timestamp);
+                                await DispatchEventAsync(tagEvent.TagName, tagEvent.Value, tagEvent.Timestamp);
                             }
                             finally
                             {
@@ -97,7 +93,6 @@ namespace mes_server.Services.OpcService
         public override void Dispose()
         {
             _counterLock.Dispose();
-            _telemetryLock.Dispose();
             base.Dispose();
         }
     }

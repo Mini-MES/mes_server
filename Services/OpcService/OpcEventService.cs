@@ -1,4 +1,5 @@
 using mes_server.Models.DTOs.MasterData;
+using mes_server.Models.Enum;
 using mes_server.Models.MasterData;
 using mes_server.Services.EquipmentService;
 using mes_server.Services.ProductionService;
@@ -23,19 +24,19 @@ namespace mes_server.Services.OpcService
             _logger = logger;
         }
 
-        public async Task HandleTagChangedAsync(string tagName, object value, DateTime timestamp)
+        public async Task HandleTagChangedAsync(string EquipmentId, OpcUaTagType TagType, string NodeId, object value, DateTime timestamp)
         {
-            switch (tagName)
+            switch (TagType)
             {
-                case "Counter":
+                case OpcUaTagType.Counter:
                     await HandleCounterAsync(timestamp);
                     break;
 
-                case "Sinusoid":
+                case OpcUaTagType.Temperature:
                     await HandleTemperatureAsync(value, timestamp);
                     break;
 
-                case "Square":
+                case OpcUaTagType.Running:
                     await HandleEquipmentStatusAsync(value, timestamp);
                     break;
             }
