@@ -36,7 +36,7 @@ namespace mes_server.Services.OpcService
                     await HandleTemperatureAsync(value, timestamp);
                     break;
 
-                case OpcUaTagType.Running:
+                case OpcUaTagType.EquipmentStatus:
                     await HandleEquipmentStatusAsync(value, timestamp);
                     break;
             }

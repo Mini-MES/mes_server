@@ -16,7 +16,7 @@ namespace mes_server.Services.OpcService
 
         private ISession? _session;
 
-        public event Action<OpcUaTagType>? OnDataReceived;
+        public event Action<OpcUaTagEvent>? OnDataReceived;
 
         public bool IsConnected => _session != null && _session.Connected;
 
