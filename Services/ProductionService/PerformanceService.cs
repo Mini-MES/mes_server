@@ -115,14 +115,17 @@ namespace mes_server.Services.ProductionService
                 }
             }
 
-            var targetEquipmentId = equipmentId ?? (perf.ProcessID == 3 ? "CNC03" : (perf.ProcessID == 5 ? "CNC05" : "CNC01")); // TODO : PLC 연결 후 고칠 예정
-            await _dailyEquipmentProductionService.CreateDailyEquipmentProductionAsync(
-                targetEquipmentId, 
-                DateOnly.FromDateTime(perf.WorkDate), 
-                perf.GoodQty, 
-                perf.BadQty, 
-                autoSave: false
-            );
+            var targetEquipmentId = equipmentId;
+            if (!string.IsNullOrWhiteSpace(targetEquipmentId))
+            {
+                await _dailyEquipmentProductionService.CreateDailyEquipmentProductionAsync(
+                    targetEquipmentId,
+                    DateOnly.FromDateTime(perf.WorkDate),
+                    perf.GoodQty,
+                    perf.BadQty,
+                    autoSave: false
+                );
+            }
 
             if (autoSave)
             {
@@ -132,7 +135,7 @@ namespace mes_server.Services.ProductionService
             return perf;
         }
 
-        public async Task<Performance?> RecordAutoProductionAsync(string equipmentId, string userId = "OPC_SYSTEM")
+        public async Task<Performance?> RecordAutoProductionAsync(string equipmentId, int productionQty, string userId = "OPC_SYSTEM")
         {
             var equipment = await _equipmentRepository.GetByIdAsync(equipmentId);
             if (equipment == null || equipment.Status != EquipmentStatus.Running || string.IsNullOrEmpty(equipment.CurrentLotId))
@@ -146,39 +149,48 @@ namespace mes_server.Services.ProductionService
                 return null;
             }
 
+            var workOrder = lot.WorkOrder ?? throw new InvalidOperationException("LOT에 연결된 생산지시를 찾을 수 없습니다.");
+
             var performances = await _performanceRepository.GetPerformancesByLotIdAsync(lot.LotID);
             int currentGoodQty = performances
                 .Where(p => p.ProcessID == lot.CurrentProcessID)
                 .Sum(p => p.GoodQty);
-            int targetQty = (lot.WorkOrder?.TargetQty > 0) ? lot.WorkOrder.TargetQty : 20;
 
-            if (currentGoodQty >= targetQty)
+            var remainingQty = workOrder.TargetQty - currentGoodQty;
+
+            if (remainingQty <= 0)
             {
-                return null; 
+                return null;
             }
+
+            var actualProductionQty = Math.Min(productionQty, remainingQty);
 
             var registerDto = new PerformanceRegisterDto
             {
                 WorkOrderID = lot.OrderID,
                 LotID = lot.LotID,
-                ProcessID = lot.CurrentProcessID > 0 ? lot.CurrentProcessID : 2,
-                GoodQty = 1,
+                ProcessID = lot.CurrentProcessID,
+                GoodQty = actualProductionQty,
                 BadQty = 0,
-                InputQty = 1
+                InputQty = actualProductionQty,
             };
 
             var perf = await RegisterPerformanceAsync(registerDto, userId, autoSave: false, equipmentId);
 
-            await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: 3, autoSave: false);
+            await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: actualProductionQty*3, autoSave: false);
             await _performanceRepository.SaveChangesAsync();
 
-            _logger.LogInformation("✨ [OPC UA Counter] {EquipmentId} ➔ LOT [{LotId}] 자동 실적 등록 완료 ({Current}/{Target}EA)",
-                equipmentId, lot.LotID, currentGoodQty + 1, targetQty);
-
-            int updatedGoodQty = currentGoodQty + perf.GoodQty;
+            var updatedProcessGoodQty = currentGoodQty + actualProductionQty;
             var actualLotStatus = lot.Status;
-            var actualWorkOrderStatus = lot.WorkOrder?.Status ?? OrderStatus.InProgress;
-            var actualTotalGoodQty = lot.WorkOrder?.TotalGoodQty ?? updatedGoodQty;
+            var actualWorkOrderStatus = workOrder.Status;
+            var actualTotalGoodQty = workOrder.TotalGoodQty;
+
+            _logger.LogInformation("✨ [OPC UA Counter] {EquipmentId} ➔ LOT [{LotId}] 자동 실적 등록 완료: Increment={Increment}, Current={Current}, Target={Target}",
+               equipmentId,
+               lot.LotID,
+               actualProductionQty,
+               updatedProcessGoodQty,
+               workOrder.TargetQty);
 
             await _hubContext.Clients.All.SendAsync("LotUpdated", new
             {
@@ -203,7 +215,7 @@ namespace mes_server.Services.ProductionService
             {
                 status = "UPDATED",
                 lotId = lot.LotID,
-                goodIncrement = 1,
+                goodIncrement = actualProductionQty,
                 badIncrement = 0,
                 equipmentId = equipmentId
             });
@@ -213,9 +225,7 @@ namespace mes_server.Services.ProductionService
 
         private async Task<(Lot lot, WorkOrder workOrder)> ValidateProductionAsync(PerformanceRegisterDto registerDto)
         {
-            if (registerDto.InputQty < 0 ||
-        registerDto.GoodQty < 0 ||
-        registerDto.BadQty < 0)
+            if (registerDto.InputQty < 0 || registerDto.GoodQty < 0 || registerDto.BadQty < 0)
             {
                 throw new ArgumentException(
                     "투입수량, 양품수량, 불량수량은 음수일 수 없습니다.");
