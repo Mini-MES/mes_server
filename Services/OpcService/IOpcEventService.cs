@@ -2,6 +2,6 @@
 {
     public interface IOpcEventService
     {
-        Task HandleTagChangedAsync(OpcUaTagType tagEvent, long counterDelta = 0);
+        Task HandleTagChangedAsync(OpcUaTagEvent tagEvent, long counterDelta = 0);
     }
 }
