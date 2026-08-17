@@ -144,7 +144,9 @@ namespace mes_server.Services.OpcService
                 );
 
                 _logger.LogInformation("✅ OPC UA 서버 세션 연결 성공!");
-                await SubscribeToTagsAsync();
+                BrowseAllNodes();
+                BrowseRootObjects();
+                // await SubscribeToTagsAsync();
             }
             catch (Exception ex)
             {
@@ -209,6 +211,164 @@ namespace mes_server.Services.OpcService
                 await _session.CloseAsync();
                 _session.Dispose();
                 _session = null;
+            }
+        }
+
+        private void BrowseRootObjects()
+        {
+            if (_session == null || !_session.Connected)
+            {
+                _logger.LogWarning("OPC UA 세션이 연결되지 않았습니다.");
+                return;
+            }
+
+            var browser = new Browser(_session)
+            {
+                BrowseDirection = BrowseDirection.Forward,
+                ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
+                IncludeSubtypes = true,
+                NodeClassMask =
+                    (int)NodeClass.Object |
+                    (int)NodeClass.Variable
+            };
+
+            var references = browser.Browse(ObjectIds.ObjectsFolder);
+
+            foreach (var reference in references)
+            {
+                var nodeId = ExpandedNodeId.ToNodeId(
+                    reference.NodeId,
+                    _session.NamespaceUris);
+
+                if (nodeId == null)
+                    continue;
+
+                _logger.LogInformation(
+                    "ROOT: {DisplayName} | Class={NodeClass} | NodeId={NodeId} | Namespace={Namespace}",
+                    reference.DisplayName.Text,
+                    reference.NodeClass,
+                    nodeId,
+                    nodeId.NamespaceIndex);
+            }
+        }
+
+        private void BrowseAllNodes()
+        {
+            if (_session == null || !_session.Connected)
+            {
+                _logger.LogWarning("OPC UA 세션이 연결되지 않았습니다.");
+                return;
+            }
+
+            var visited = new HashSet<string>();
+
+            var cncChannelNodeId = NodeId.Parse("ns=2;s=CNC");
+
+            BrowseRecursive(
+                cncChannelNodeId,
+                depth: 0,
+                maxDepth: 5);
+
+            void BrowseRecursive(
+                NodeId parentNodeId,
+                int depth,
+                int maxDepth)
+            {
+                if (_session == null || depth > maxDepth)
+                    return;
+
+                if (!visited.Add(parentNodeId.ToString()))
+                    return;
+
+                var browser = new Browser(_session)
+                {
+                    BrowseDirection = BrowseDirection.Forward,
+                    ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
+                    IncludeSubtypes = true,
+                    NodeClassMask =
+                        (int)NodeClass.Object |
+                        (int)NodeClass.Variable
+                };
+
+                ReferenceDescriptionCollection references;
+
+                try
+                {
+                    references = browser.Browse(parentNodeId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "노드 탐색 실패: {NodeId}",
+                        parentNodeId);
+
+                    return;
+                }
+
+                foreach (var reference in references)
+                {
+                    var childNodeId = ExpandedNodeId.ToNodeId(
+                        reference.NodeId,
+                        _session.NamespaceUris);
+
+                    if (childNodeId == null)
+                        continue;
+
+                    // OPC UA 표준 Server 진단 노드는 제외
+                    if (childNodeId == ObjectIds.Server)
+                        continue;
+
+                    // Kepware 태그는 일반적으로 사용자 namespace에 위치하므로
+                    // 표준 namespace 0의 진단/설정 노드는 출력하지 않음
+                    if (childNodeId.NamespaceIndex == 0)
+                        continue;
+
+                    var indent = new string(' ', depth * 2);
+
+                    if (reference.NodeClass == NodeClass.Variable)
+                    {
+                        try
+                        {
+                            var dataValue = _session.ReadValue(childNodeId);
+
+                            _logger.LogInformation(
+                                "{Indent}- {DisplayName} | Class={NodeClass} | NodeId={NodeId} | Value={Value} | Type={Type} | Status={Status}",
+                                indent,
+                                reference.DisplayName.Text,
+                                reference.NodeClass,
+                                childNodeId,
+                                dataValue.Value,
+                                dataValue.Value?.GetType().Name ?? "null",
+                                dataValue.StatusCode);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(
+                                ex,
+                                "태그 값 읽기 실패: {NodeId}",
+                                childNodeId);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "{Indent}- {DisplayName} | Class={NodeClass} | NodeId={NodeId}",
+                            indent,
+                            reference.DisplayName.Text,
+                            reference.NodeClass,
+                            childNodeId);
+                    }
+
+                    if (reference.NodeClass == NodeClass.Object)
+                    {
+                        var cncChannelNodeId = NodeId.Parse("ns=2;s=CNC");
+                        BrowseRecursive(
+                            childNodeId,
+                            depth + 1,
+                            maxDepth);
+                    }
+                }
             }
         }
     }
