@@ -24,9 +24,29 @@ namespace mes_server.Services.OpcService
         {
             try
             {
-                var serverUrl = _configuration["OpcUa:ServerUrl"] 
-                    ?? "opc.tcp://uademo.prosysopc.com:53530/OPCUA/SimulationServer";
-                var appName = _configuration["OpcUa:ApplicationName"] ?? "MiniMES_OpcUaClient";
+                var serverUrl = _configuration["OPC_UA:ServerURL"] ?? throw new InvalidOperationException("OPC UA 서버 URL이 구성에 없습니다.");
+                var appName = _configuration["OPC_UA:ApplicationName"] ?? throw new InvalidOperationException("OPC UA 애플리케이션 이름이 구성에 없습니다.");
+
+                var username = _configuration["OPC_UA:Username"];
+                var password = _configuration["OPC_UA:Password"];
+
+                if (string.IsNullOrWhiteSpace(username) ||
+                    string.IsNullOrWhiteSpace(password))
+                {
+                    throw new InvalidOperationException(
+                        "Kepware OPC UA 접속 계정이 설정되지 않았습니다.");
+                }
+
+                var pkiRoot = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MiniMES",
+                    "OpcUa",
+                    "pki");
+
+                var ownStorePath = Path.Combine(pkiRoot, "own");
+                var trustedStorePath = Path.Combine(pkiRoot, "trusted");
+                var issuerStorePath = Path.Combine(pkiRoot, "issuers");
+                var rejectedStorePath = Path.Combine(pkiRoot, "rejected");
 
                 _logger.LogInformation("🔌 OPC UA 서버 연결 시도: {ServerUrl}", serverUrl);
 
@@ -39,26 +59,27 @@ namespace mes_server.Services.OpcService
                     {
                         ApplicationCertificate = new CertificateIdentifier
                         {
-                            StoreType = @"Directory",
-                            StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\MachineDefault",
-                            SubjectName = appName
+                            StoreType = "Directory",
+                            StorePath = ownStorePath,
+                            SubjectName = $"CN={appName}"
                         },
                         TrustedPeerCertificates = new CertificateTrustList
                         {
-                            StoreType = @"Directory",
-                            StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Applications"
+                            StoreType = "Directory",
+                            StorePath = trustedStorePath
                         },
                         TrustedIssuerCertificates = new CertificateTrustList
                         {
-                            StoreType = @"Directory",
-                            StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Certificate Authorities"
+                            StoreType = "Directory",
+                            StorePath = issuerStorePath
                         },
                         RejectedCertificateStore = new CertificateTrustList
                         {
-                            StoreType = @"Directory",
-                            StorePath = @"%CommonApplicationData%\OPC Foundation\RejectedCertificates"
+                            StoreType = "Directory",
+                            StorePath = rejectedStorePath
                         },
-                        AutoAcceptUntrustedCertificates = true,
+
+                        AutoAcceptUntrustedCertificates = false,
                         AddAppCertToTrustedStore = true
                     },
                     TransportConfigurations = new TransportConfigurationCollection(),
@@ -72,10 +93,40 @@ namespace mes_server.Services.OpcService
 
                 await config.ValidateAsync(ApplicationType.Client);
 
-                config.CertificateValidator.CertificateValidation += (s, e) =>
+                var application = new ApplicationInstance
                 {
-                    e.Accept = true;
+                    ApplicationName = appName,
+                    ApplicationType = ApplicationType.Client,
+                    ApplicationConfiguration = config
                 };
+
+                var certificateReady =
+                    await application.CheckApplicationInstanceCertificatesAsync(
+                        false,
+                        2048,
+                        CancellationToken.None);
+
+                if (!certificateReady)
+                {
+                    throw new InvalidOperationException(
+                        "Mini-MES OPC UA 클라이언트 인증서를 생성하거나 불러오지 못했습니다.");
+                }
+
+                var clientCertificate =
+                    await config.SecurityConfiguration.ApplicationCertificate
+                        .FindAsync(true);
+
+                if (clientCertificate == null)
+                {
+                    throw new InvalidOperationException(
+                        "생성된 Mini-MES OPC UA 클라이언트 인증서를 찾지 못했습니다.");
+                }
+
+                _logger.LogInformation(
+                    "OPC UA 클라이언트 인증서 준비 완료: Subject={Subject}, Thumbprint={Thumbprint}, Store={StorePath}",
+                    clientCertificate.Subject,
+                    clientCertificate.Thumbprint,
+                    ownStorePath);
 
                 var selectedEndpoint = CoreClientUtils.SelectEndpoint(config, serverUrl, useSecurity: false);
                 var endpointConfiguration = EndpointConfiguration.Create(config);
@@ -88,7 +139,7 @@ namespace mes_server.Services.OpcService
                     checkDomain: false,
                     sessionName: appName,
                     sessionTimeout: 60000u,
-                    identity: new UserIdentity(new AnonymousIdentityToken()),
+                    identity: new UserIdentity(username, System.Text.Encoding.UTF8.GetBytes(password)),
                     preferredLocales: null
                 );
 
