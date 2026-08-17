@@ -1,9 +1,8 @@
-using mes_server.Models.Enum;
 using mes_server.Models.Settings;
+using Microsoft.Extensions.Options;
 using Opc.Ua;
 using Opc.Ua.Client;
 using Opc.Ua.Configuration;
-using System.Security.Principal;
 using System.Text;
 using ISession = Opc.Ua.Client.ISession;
 
@@ -13,6 +12,9 @@ namespace mes_server.Services.OpcService
     {
         private readonly OpcUaSettings _settings;
         private readonly ILogger<OpcUaService> _logger;
+        private SessionReconnectHandler? _reconnectHandler;
+
+        private readonly object _reconnectLock = new();
 
         private ISession? _session;
 
@@ -20,9 +22,9 @@ namespace mes_server.Services.OpcService
 
         public bool IsConnected => _session != null && _session.Connected;
 
-        public OpcUaService(OpcUaSettings settings, ILogger<OpcUaService> logger)
+        public OpcUaService(IOptions<OpcUaSettings> options, ILogger<OpcUaService> logger)
         {
-            _settings = settings;
+            _settings = options.Value;
             _logger = logger;
         }
 
@@ -44,9 +46,13 @@ namespace mes_server.Services.OpcService
                     selectedEndpoint.SecurityPolicyUri,
                     selectedEndpoint.SecurityMode);
 
-                if (selectedEndpoint.SecurityPolicyUri != SecurityPolicies.Basic256Sha256)
+                var expectedSecurityPolicyUri = _settings.SecurityPolicy == nameof(SecurityPolicies.Basic256Sha256)
+                    ? SecurityPolicies.Basic256Sha256
+                    : _settings.SecurityPolicy;
+
+                if (selectedEndpoint.SecurityPolicyUri != expectedSecurityPolicyUri)
                 {
-                    throw new InvalidOperationException( $"Basic256Sha256 Endpoint를 선택하지 못했습니다. 선택값: {selectedEndpoint.SecurityPolicyUri}");
+                    throw new InvalidOperationException( $"선택된 SecurityPolicy가 설정과 일치하지 않습니다. 선택값: {selectedEndpoint.SecurityPolicyUri}");
                 }
 
                 if (selectedEndpoint.SecurityMode != MessageSecurityMode.SignAndEncrypt)
@@ -70,7 +76,10 @@ namespace mes_server.Services.OpcService
                    identity: identity,
                    preferredLocales: null);
 
-                _logger.LogInformation("✅ OPC UA 서버 세션 연결 성공!");
+                _session.KeepAliveInterval = _settings.KeepAliveInterval;
+                _session.KeepAlive += HandleSessionKeepAlive;
+
+                _logger.LogInformation("✅ OPC UA 서버 세션 연결 성공! KeepAliveInterval: {KeepAliveInterval}", _settings.KeepAliveInterval);
 
                 await SubscribeToTagsAsync();
             }
@@ -164,9 +173,7 @@ namespace mes_server.Services.OpcService
             var application = new ApplicationInstance
             {
                 ApplicationName = _settings.ApplicationName,
-
                 ApplicationType = ApplicationType.Client,
-
                 ApplicationConfiguration = config
             };
 
@@ -241,12 +248,24 @@ namespace mes_server.Services.OpcService
 
         public async Task DisconnectAsync()
         {
-            if (_session != null)
+            lock (_reconnectLock)
             {
-                await _session.CloseAsync();
-                _session.Dispose();
-                _session = null;
+                _reconnectHandler?.Dispose();
+                _reconnectHandler = null;
             }
+
+            if (_session == null)
+            {
+                return;
+            }
+
+            _session.KeepAlive -= HandleSessionKeepAlive;
+
+            await _session.CloseAsync();
+            _session.Dispose();
+            _session = null;
+
+            _logger.LogInformation("OPC UA 세션 연결 종료");
         }
 
         private void ValidateSettings()
@@ -344,6 +363,52 @@ namespace mes_server.Services.OpcService
                     dataValue.Value,
                     timestamp)
                 );
+        }
+
+        private void HandleSessionKeepAlive(ISession session, KeepAliveEventArgs e)
+        {
+            if (e.Status != null && ServiceResult.IsBad(e.Status))
+            {
+                _logger.LogWarning("OPC UA 세션 KeepAlive 상태 불량: {Status}", e.Status);
+                lock (_reconnectLock)
+                {
+                    if (_reconnectHandler == null)
+                    {
+                        _logger.LogInformation("OPC UA 세션 재연결 시도 중...");
+                        _reconnectHandler = new SessionReconnectHandler(DefaultSessionFactory.Instance.Telemetry, reconnectAbort: true, maxReconnectPeriod: 60_000);
+                        _reconnectHandler.BeginReconnect(session,_settings.KeepAliveInterval,HandleReconnectComplete);
+
+                    }
+                    _logger.LogWarning("OPC UA 재연결 시작: RetryInterval={RetryInterval}ms", _settings.KeepAliveInterval);
+                }
+            }
+        }
+        private void HandleReconnectComplete(object? sender, EventArgs eventArgs)
+        {
+            lock (_reconnectLock)
+            {
+                if (_reconnectHandler == null ||
+                    !ReferenceEquals(sender, _reconnectHandler))
+                {
+                    return;
+                }
+
+                var reconnectedSession = _reconnectHandler.Session;
+
+                if (reconnectedSession == null)
+                {
+                    _logger.LogError("OPC UA 재연결 후 Session을 가져오지 못했습니다.");
+                    return;
+                }
+
+                _session = reconnectedSession;
+                _session.KeepAliveInterval = _settings.KeepAliveInterval;
+
+                _reconnectHandler.Dispose();
+                _reconnectHandler = null;
+
+                _logger.LogInformation("✅ OPC UA 서버 재연결 성공");
+            }
         }
     }
 }

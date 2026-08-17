@@ -115,14 +115,17 @@ namespace mes_server.Services.ProductionService
                 }
             }
 
-            var targetEquipmentId = equipmentId ?? (perf.ProcessID == 3 ? "CNC03" : (perf.ProcessID == 5 ? "CNC05" : "CNC01")); // TODO : PLC 연결 후 고칠 예정
-            await _dailyEquipmentProductionService.CreateDailyEquipmentProductionAsync(
-                targetEquipmentId, 
-                DateOnly.FromDateTime(perf.WorkDate), 
-                perf.GoodQty, 
-                perf.BadQty, 
-                autoSave: false
-            );
+            var targetEquipmentId = equipmentId;
+            if (!string.IsNullOrWhiteSpace(targetEquipmentId))
+            {
+                await _dailyEquipmentProductionService.CreateDailyEquipmentProductionAsync(
+                    targetEquipmentId,
+                    DateOnly.FromDateTime(perf.WorkDate),
+                    perf.GoodQty,
+                    perf.BadQty,
+                    autoSave: false
+                );
+            }
 
             if (autoSave)
             {
@@ -174,7 +177,7 @@ namespace mes_server.Services.ProductionService
 
             var perf = await RegisterPerformanceAsync(registerDto, userId, autoSave: false, equipmentId);
 
-            await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: 3, autoSave: false);
+            await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: actualProductionQty*3, autoSave: false);
             await _performanceRepository.SaveChangesAsync();
 
             var updatedProcessGoodQty = currentGoodQty + actualProductionQty;

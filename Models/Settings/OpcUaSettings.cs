@@ -6,6 +6,7 @@
         public string ApplicationName { get; set; } = null!;
         public string Username { get; set; } = null!;
         public string Password { get; set; } = null!;
+        public string SecurityPolicy { get; set; } = null!;
         public bool AutoAcceptCertificates { get; set; }
         public int SessionTimeout { get; set; }
         public int KeepAliveInterval { get; set; }
