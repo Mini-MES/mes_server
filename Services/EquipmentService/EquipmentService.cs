@@ -15,13 +15,15 @@ namespace mes_server.Services.EquipmentService
     {
         private readonly IGenericRepository<Equipment> _equipmentRepository;
         private readonly IGenericRepository<DowntimeReasonMaster> _downtimeReasonRepository;
+        private readonly ILogger<EquipmentService> _logger;
         private readonly MESDbContext _context;
         private readonly IHubContext<MesHub> _hubContext;
 
-        public EquipmentService(IGenericRepository<Equipment> equipmentRepository, IGenericRepository<DowntimeReasonMaster> downtimeReasonRepository, MESDbContext context, IHubContext<MesHub> hubContext)
+        public EquipmentService(IGenericRepository<Equipment> equipmentRepository, IGenericRepository<DowntimeReasonMaster> downtimeReasonRepository, ILogger<EquipmentService> logger, MESDbContext context, IHubContext<MesHub> hubContext)
         {
             _equipmentRepository = equipmentRepository;
             _downtimeReasonRepository = downtimeReasonRepository;
+            _logger = logger;
             _context = context;
             _hubContext = hubContext;
         }
@@ -34,14 +36,6 @@ namespace mes_server.Services.EquipmentService
             var oldStatus = equipment.Status;
             var newStatus = request.NewStatus;
             var now = DateTime.UtcNow;
-
-            if (newStatus == EquipmentStatus.Running &&
-            string.IsNullOrEmpty(request.CurrentLotID) &&
-            string.IsNullOrEmpty(equipment.CurrentLotId))
-            {
-                throw new InvalidOperationException(
-                    "설비를 가동하려면 LOT을 지정해야 합니다.");
-            }
 
             var lotChanged =!string.IsNullOrEmpty(request.CurrentLotID) && equipment.CurrentLotId != request.CurrentLotID;
 
@@ -61,11 +55,9 @@ namespace mes_server.Services.EquipmentService
                 return true;
             }
 
-            // RUNNING이 아니면 전부 비가동(Downtime) 상태로 간주
             bool isOldDowntime = oldStatus != EquipmentStatus.Running;
             bool isNewDowntime = newStatus != EquipmentStatus.Running;
 
-            // (가동) ➔ (비가동) 으로 전환될 때만 1회 새로운 DowntimeLog 생성
             if (!isOldDowntime && isNewDowntime)
             {
                 var downtimeLog = new DowntimeLog
@@ -76,7 +68,6 @@ namespace mes_server.Services.EquipmentService
                 _context.DowntimeLogs.Add(downtimeLog);
             }
 
-            // (비가동) ➔ (가동 RUNNING) 으로 전환될 때만 열려있는 DowntimeLog 마감
             if (isOldDowntime && !isNewDowntime)
             {
                 var openLog = await _context.DowntimeLogs
@@ -465,43 +456,15 @@ namespace mes_server.Services.EquipmentService
             });
         }
 
-        public async Task BroadcastTelemetryAsync(double sinusoidValue, DateTime timestamp)
+        public async Task BroadcastTelemetryAsync(string equipmentId, double temperature, DateTime timestamp)
         {
-            var today = DateOnly.FromDateTime(DateTime.Today);
-            var allEquipments = await _equipmentRepository.GetAllAsync();
-            var dailyProds = await _context.DailyEquipmentProductions.AsNoTracking()
-                .Where(d => d.WorkDate == today)
-                .ToListAsync();
-
-            var telemetryList = new List<object>();
-
-            foreach (var eq in allEquipments)
+            var equipment = await _equipmentRepository.GetByIdAsync(equipmentId);
+            if (equipment == null)
             {
-                var daily = dailyProds.FirstOrDefault(d => d.EquipmentID == eq.EquipmentID);
-                int eqQty = daily?.GoodQty ?? 0;
-
-                if (eqQty == 0 && !string.IsNullOrEmpty(eq.CurrentLotId))
-                {
-                    eqQty = await _context.Performances
-                        .Where(p => p.LotID == eq.CurrentLotId)
-                        .SumAsync(p => p.GoodQty);
-                }
-
-                telemetryList.Add(new
-                {
-                    EquipmentId = eq.EquipmentID,
-                    Temperature = eq.EquipmentID == "CNC01"
-                        ? Math.Round(65.0 + (sinusoidValue * 15.0), 1)
-                        : Math.Round(25.0 + (sinusoidValue * 1.5), 1),
-                    Status = eq.Status,
-                    TotalCount = eqQty,
-                    Timestamp = timestamp
-                });
+                _logger.LogWarning("텔레메트리 대상 설비를 찾을 수 없습니다: Equipment={EquipmentId}", equipmentId); 
+                return;
             }
 
-<<<<<<< Updated upstream
-            await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetryList);
-=======
             var today = DateOnly.FromDateTime(DateTime.Now);
 
             var daily = await _context.DailyEquipmentProductions
@@ -521,7 +484,6 @@ namespace mes_server.Services.EquipmentService
             };
 
             await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetry);
->>>>>>> Stashed changes
         }
 
         public async Task AddRunningTimeAsync(string equipmentId, int seconds = 3, bool autoSave = true)

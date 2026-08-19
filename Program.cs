@@ -72,6 +72,7 @@ namespace mes_server
             builder.Services.AddScoped<IPerformanceService, PerformanceService>();
             builder.Services.AddScoped<IDailyEquipmentProductionService, DailyEquipmentProductionService>();
             builder.Services.AddScoped<IOpcEventService, OpcEventService>();
+            builder.Services.Configure<OpcUaSettings>(builder.Configuration.GetSection("OPC_UA"));
             // builder.Services.AddHostedService<AutomatedSensorBackgroundService>();
 
             builder.Services.AddCors(options =>
