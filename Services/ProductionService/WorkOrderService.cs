@@ -1,6 +1,8 @@
 using mes_server.Models.DTOs.Production;
 using mes_server.Models.Enum;
+using mes_server.Models.MasterData;
 using mes_server.Models.Production;
+using mes_server.Repositories.Interface.Generic;
 using mes_server.Repositories.Interface.Production;
 using mes_server.Services.MasterDataService;
 
@@ -12,13 +14,20 @@ namespace mes_server.Services.ProductionService
         private readonly ILotRepository _lotRepository;
         private readonly IMasterDataService _masterDataService;
         private readonly ILotService _lotService;
+        private readonly IGenericRepository<Equipment> _equipmentRepository;
 
-        public WorkOrderService(IWorkOrderRepository workOrderRepository, ILotRepository lotRepository, IMasterDataService masterDataService, ILotService lotService)
+        public WorkOrderService(
+            IWorkOrderRepository workOrderRepository,
+            ILotRepository lotRepository,
+            IMasterDataService masterDataService,
+            ILotService lotService,
+            IGenericRepository<Equipment> equipmentRepository)
         {
             _workOrderRepository = workOrderRepository;
             _lotRepository = lotRepository;
             _masterDataService = masterDataService;
             _lotService = lotService;
+            _equipmentRepository = equipmentRepository;
         }
 
 
@@ -41,6 +50,18 @@ namespace mes_server.Services.ProductionService
                         throw new InvalidOperationException($"LOT ID ({lot.LotID})가 보류(HOLD) 상태입니다. 불량 보류 처리 해제 후 최종 마감할 수 있습니다.");
                     }
                     lot.Status = LotStatus.DONE;
+                }
+
+                var completedLotIds = lots.Select(lot => lot.LotID).ToHashSet();
+                var equipments = await _equipmentRepository.GetAllAsync();
+                var assignedEquipments = equipments
+                    .Where(equipment => equipment.CurrentLotId != null && completedLotIds.Contains(equipment.CurrentLotId))
+                    .ToList();
+
+                foreach (var equipment in assignedEquipments)
+                {
+                    equipment.CurrentLotId = null;
+                    equipment.CurrentOperatorId = null;
                 }
 
                 order.Status = OrderStatus.Completed;

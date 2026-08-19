@@ -47,6 +47,12 @@ namespace mes_server.Data
                 .HasForeignKey(o => o.EquipmentID)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<Equipment>()
+                .HasOne(e => e.CurrentOperator)
+                .WithMany()
+                .HasForeignKey(e => e.CurrentOperatorId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // BOM 복합키 설정
             modelBuilder.Entity<BOM>()
                 .HasKey(b => new { b.ProductID, b.ChildProductID, b.ProcessID });

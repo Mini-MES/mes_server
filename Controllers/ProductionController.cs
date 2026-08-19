@@ -6,6 +6,7 @@ using mes_server.Models.Production;
 using mes_server.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using mes_server.Services.ProductionService;
+using System.Security.Claims;
 
 namespace mes_server.Controllers
 {
@@ -77,7 +78,13 @@ namespace mes_server.Controllers
         {
             try
             {
-                var result = await _productionService.StartProductionAsync(orderId, dto);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    return Unauthorized(new { Message = "로그인 사용자 정보를 확인할 수 없습니다." });
+                }
+
+                var result = await _productionService.StartProductionAsync(orderId, dto, userId);
 
                 try
                 {
@@ -149,10 +156,13 @@ namespace mes_server.Controllers
 
         // 공정 이동
         [HttpPost("performance/move")]
-        public async Task<IActionResult> MoveProcess([FromBody] PerformanceRegisterDto perfDto, [FromQuery] int nextProcessId)
+        public async Task<IActionResult> MoveProcess(
+            [FromBody] PerformanceRegisterDto perfDto,
+            [FromQuery] int nextProcessId,
+            [FromQuery] string? equipmentId = null)
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
-            await _productionService.MoveProcessAsync(perfDto, nextProcessId, userId);
+            await _productionService.MoveProcessAsync(perfDto, nextProcessId, userId, equipmentId);
 
             try
             {

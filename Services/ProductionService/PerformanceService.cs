@@ -132,9 +132,28 @@ namespace mes_server.Services.ProductionService
             return perf;
         }
 
+<<<<<<< Updated upstream
         public async Task<Performance?> RecordAutoProductionAsync(string equipmentId, string userId = "OPC_SYSTEM")
+=======
+        public async Task<Performance?> RecordAutoProductionAsync(string equipmentId, int productionQty)
+>>>>>>> Stashed changes
         {
             var equipment = await _equipmentRepository.GetByIdAsync(equipmentId);
+            if (equipment == null || equipment.Status != EquipmentStatus.Running || string.IsNullOrEmpty(equipment.CurrentLotId))
+            {
+                return null;
+            }
+
+            var currentOperatorId = equipment.CurrentOperatorId;
+            if (string.IsNullOrWhiteSpace(currentOperatorId))
+            {
+                _logger.LogWarning(
+                    "OPC 자동 실적을 등록할 작업자가 지정되지 않았습니다: Equipment={EquipmentId}, Lot={LotId}",
+                    equipmentId,
+                    equipment.CurrentLotId);
+                return null;
+            }
+
             if (equipment == null || equipment.Status != EquipmentStatus.Running || string.IsNullOrEmpty(equipment.CurrentLotId))
             {
                 return null;
@@ -167,7 +186,7 @@ namespace mes_server.Services.ProductionService
                 InputQty = 1
             };
 
-            var perf = await RegisterPerformanceAsync(registerDto, userId, autoSave: false, equipmentId);
+            var perf = await RegisterPerformanceAsync(registerDto, currentOperatorId, autoSave: false, equipmentId);
 
             await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: 3, autoSave: false);
             await _performanceRepository.SaveChangesAsync();

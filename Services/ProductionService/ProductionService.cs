@@ -46,7 +46,7 @@ namespace mes_server.Services.ProductionService
             _equipmentService = equipmentService;
         }
 
-        public async Task<StartProductionResponseDto> StartProductionAsync(int orderId, StartProductionDto dto)
+        public async Task<StartProductionResponseDto> StartProductionAsync(int orderId, StartProductionDto dto, string userId)
         {
             var order = await _workOrderService.StartWorkOrderAsync(orderId, autoSave : false);
 
@@ -103,6 +103,8 @@ namespace mes_server.Services.ProductionService
                     "설비 상태 변경에 실패했습니다.");
             }
 
+            equipment.CurrentOperatorId = userId;
+
             await _equipmentRepository.SaveChangesAsync();
 
             return new StartProductionResponseDto
@@ -113,7 +115,7 @@ namespace mes_server.Services.ProductionService
             };
         }
 
-        public async Task MoveProcessAsync(PerformanceRegisterDto perfDto, int nextProcessId, string userId)
+        public async Task MoveProcessAsync(PerformanceRegisterDto perfDto, int nextProcessId, string userId, string? nextEquipmentId = null)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -123,7 +125,64 @@ namespace mes_server.Services.ProductionService
                 {
                     throw new InvalidOperationException("공정 이동이 불가능합니다.");
                 }
-                await _performanceService.RegisterPerformanceAsync(perfDto, userId);
+
+                var lot = await _lotRepository.GetByIdAsync(perfDto.LotID)
+                    ?? throw new KeyNotFoundException("선택한 LOT을 찾을 수 없습니다.");
+
+                if (lot.OrderID != perfDto.WorkOrderID || lot.CurrentProcessID != perfDto.ProcessID)
+                {
+                    throw new InvalidOperationException("LOT, 생산지시 및 현재 공정 정보가 일치하지 않습니다.");
+                }
+
+                Equipment? nextEquipment = null;
+                if (!string.IsNullOrWhiteSpace(nextEquipmentId))
+                {
+                    nextEquipment = await _equipmentRepository.GetByIdAsync(nextEquipmentId)
+                        ?? throw new KeyNotFoundException("선택한 다음 공정 설비를 찾을 수 없습니다.");
+
+                    if (!string.IsNullOrEmpty(nextEquipment.CurrentLotId) && nextEquipment.CurrentLotId != lot.LotID)
+                    {
+                        throw new InvalidOperationException("선택한 설비는 이미 다른 LOT을 작업 중입니다.");
+                    }
+
+                    if (nextEquipment.Status == EquipmentStatus.Maintenance ||
+                        nextEquipment.Status == EquipmentStatus.Error ||
+                        nextEquipment.Status == EquipmentStatus.Off)
+                    {
+                        throw new InvalidOperationException("선택한 설비는 현재 생산에 사용할 수 없습니다.");
+                    }
+                }
+
+                if (perfDto.InputQty > 0 || perfDto.GoodQty > 0 || perfDto.BadQty > 0)
+                {
+                    await _performanceService.RegisterPerformanceAsync(perfDto, userId);
+                }
+
+                var equipments = await _equipmentRepository.GetAllAsync();
+                var currentEquipments = equipments
+                    .Where(equipment => equipment.CurrentLotId == lot.LotID)
+                    .ToList();
+
+                foreach (var currentEquipment in currentEquipments)
+                {
+                    currentEquipment.CurrentLotId = null;
+                    currentEquipment.CurrentOperatorId = null;
+                }
+
+                if (nextEquipment != null)
+                {
+                    await _equipmentService.ChangeEquipmentStatusAsync(
+                        new ChangeEquipmentStatusRequest
+                        {
+                            EquipmentID = nextEquipment.EquipmentID,
+                            NewStatus = EquipmentStatus.Running,
+                            CurrentLotID = lot.LotID
+                        },
+                        autoSave: false);
+
+                    nextEquipment.CurrentOperatorId = userId;
+                }
+
                 await _lotService.ChangeLotProcessAsync(perfDto.LotID, nextProcessId);
                 await transaction.CommitAsync();
 

@@ -1,5 +1,4 @@
 using mes_server.Models.Analytics;
-using mes_server.Models.MasterData;
 using mes_server.Repositories.Interface.Generic;
 
 namespace mes_server.Services.EquipmentService
@@ -7,22 +6,15 @@ namespace mes_server.Services.EquipmentService
     public class DailyEquipmentProductionService : IDailyEquipmentProductionService
     {
         private readonly IGenericRepository<DailyEquipmentProduction> _dailyEquipmentProductionRepository;
-        private readonly IGenericRepository<Equipment> _equipmentRepository;
 
-        public DailyEquipmentProductionService(IGenericRepository<DailyEquipmentProduction> dailyEquipmentProductionRepository, IGenericRepository<Equipment> equipmentRepository)
+        public DailyEquipmentProductionService(IGenericRepository<DailyEquipmentProduction> dailyEquipmentProductionRepository)
         {
             _dailyEquipmentProductionRepository = dailyEquipmentProductionRepository;
-            _equipmentRepository = equipmentRepository;
         }
 
         public async Task CreateDailyEquipmentProductionAsync(string targetEquipmentId, DateOnly today, int goodQty, int badQty, bool autoSave = true)
         {
             var daily = await _dailyEquipmentProductionRepository.FindAsync(d => d.EquipmentID == targetEquipmentId && d.WorkDate == today);
-
-            var eq = await _equipmentRepository.FindAsync(e => e.EquipmentID == targetEquipmentId);
-
-            int runningMin = (eq != null) ? (int)(eq.TotalRunningSeconds / 60) : 0;
-            int downMin = (eq != null) ? (int)(eq.TotalDowntimeSeconds / 60) : 0;
 
             if (daily == null)
             {
@@ -31,8 +23,8 @@ namespace mes_server.Services.EquipmentService
                     EquipmentID = targetEquipmentId,
                     WorkDate = today,
                     PlannedProductionMinutes = 960,
-                    OperatingMinutes = Math.Max(1, runningMin),
-                    DowntimeMinutes = downMin,
+                    OperatingMinutes = 0,
+                    DowntimeMinutes = 0,
                     TotalProducedQty = goodQty + badQty,
                     GoodQty = goodQty,
                     DefectQty = badQty,
@@ -45,8 +37,6 @@ namespace mes_server.Services.EquipmentService
                 daily.GoodQty += goodQty;
                 daily.DefectQty += badQty;
                 daily.TotalProducedQty += (goodQty + badQty);
-                daily.OperatingMinutes = Math.Max(daily.OperatingMinutes, runningMin);
-                daily.DowntimeMinutes = downMin;
             }
 
             if (autoSave)

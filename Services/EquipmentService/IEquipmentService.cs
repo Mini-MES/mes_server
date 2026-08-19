@@ -12,6 +12,7 @@ namespace mes_server.Services.EquipmentService
         Task<bool> RegisterDowntimeReasonAsync(RegisterDowntimeReasonRequest request);
         Task<IEnumerable<DowntimeReasonDto>> GetDowntimeReasonsAsync();
         Task<IEnumerable<DowntimeLog>> GetDowntimeLogsByEquipmentAsync(string equipmentId);
+        Task<IEnumerable<DowntimeLog>> GetDowntimeLogsAsync(string? equipmentId = null, DateTime? startAt = null, DateTime? endAt = null);
         Task<OEESummaryDto> GetOEESummaryAsync();
         Task<IEnumerable<DailyEquipmentProductionDto>> GetDailyEquipmentProductionsAsync(string? equipmentId = null, DateOnly? startDate = null, DateOnly? endDate = null);
         Task BroadcastTelemetryAsync(double sinusoidValue, DateTime timestamp);

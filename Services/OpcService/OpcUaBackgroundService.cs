@@ -1,3 +1,9 @@
+<<<<<<< Updated upstream
+=======
+using mes_server.Models.MasterData;
+using System.Globalization;
+
+>>>>>>> Stashed changes
 namespace mes_server.Services.OpcService
 {
     public class OpcUaBackgroundService : BackgroundService
@@ -87,7 +93,118 @@ namespace mes_server.Services.OpcService
             await _opcUaService.DisconnectAsync();
         }
 
+<<<<<<< Updated upstream
         private async Task DispatchEventAsync(string tagName, object value, DateTime timestamp)
+=======
+        private async void HandleDataReceived(OpcUaTagEvent tagEvent)
+        {
+            if (_stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            try
+            {
+                if (tagEvent.TagType == OpcUaTagType.Counter)
+                {
+                    await HandleCounterAsync(tagEvent);
+                    return;
+                }
+
+                if (tagEvent.TagType == OpcUaTagType.Running)
+                {
+                    _logger.LogInformation(
+                        "[OPC Running 수신] Equipment={EquipmentId}, Value={Value}, Timestamp={Timestamp:O}",
+                        tagEvent.EquipmentId,
+                        tagEvent.Value,
+                        tagEvent.Timestamp);
+                }
+
+                await DispatchEventAsync(tagEvent, counterDelta: 0);
+            }
+            catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested)
+            {
+                // 애플리케이션 정상 종료
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "⚠️ OPC UA 이벤트 처리 실패: Equipment={EquipmentId}, Tag={TagType}, Value={Value}",
+                    tagEvent.EquipmentId,
+                    tagEvent.TagType,
+                    tagEvent.Value);
+            }
+        }
+
+        private async Task HandleCounterAsync(OpcUaTagEvent tagEvent)
+        {
+            long currentCounter;
+
+            try
+            {
+                currentCounter = Convert.ToInt64(tagEvent.Value, CultureInfo.InvariantCulture);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Counter 값을 정수로 변환할 수 없습니다: Equipment={EquipmentId}, Value={Value}",
+                    tagEvent.EquipmentId,
+                    tagEvent.Value);
+
+                return;
+            }
+
+            await _counterLock.WaitAsync(_stoppingToken);
+
+            try
+            {
+                if (!_lastCounters.TryGetValue(tagEvent.EquipmentId, out var previousCounter))
+                {
+                    _lastCounters[tagEvent.EquipmentId] = currentCounter;
+
+                    _logger.LogInformation(
+                        "OPC Counter 초기 기준값 설정: Equipment={EquipmentId}, Counter={Counter}",
+                        tagEvent.EquipmentId,
+                        currentCounter);
+
+                    return;
+                }
+
+                if (currentCounter == previousCounter)
+                {
+                    return;
+                }
+
+                if (currentCounter < previousCounter)
+                {
+                    _lastCounters[tagEvent.EquipmentId] = currentCounter;
+
+                    _logger.LogInformation(
+                        "OPC Counter Reset 감지: Equipment={EquipmentId}, Previous={Previous}, Current={Current}",
+                        tagEvent.EquipmentId,
+                        previousCounter,
+                        currentCounter);
+
+                    return;
+                }
+
+                var counterDelta = currentCounter - previousCounter;
+
+                await DispatchEventAsync(tagEvent, counterDelta);
+
+                // 이벤트 처리가 성공했을 때만 기준값을 갱신한다.
+                _lastCounters[tagEvent.EquipmentId] = currentCounter;
+            }
+            finally
+            {
+                _counterLock.Release();
+            }
+        }
+
+        private async Task DispatchEventAsync(OpcUaTagEvent tagEvent, long counterDelta)
+>>>>>>> Stashed changes
         {
             using var scope = _scopeFactory.CreateScope();
             var opcEventService = scope.ServiceProvider.GetRequiredService<IOpcEventService>();

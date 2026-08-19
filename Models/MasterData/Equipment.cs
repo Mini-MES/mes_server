@@ -19,6 +19,10 @@ namespace mes_server.Models.MasterData
         [MaxLength(50)]
         public string? CurrentLotId { get; set; }
 
+        public string? CurrentOperatorId { get; set; }
+
+        public User? CurrentOperator { get; set; }
+
         public long TotalRunningSeconds { get; set; } = 0;
 
         public long TotalDowntimeSeconds { get; set; } = 0;

@@ -1,10 +1,13 @@
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Services.EquipmentService;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace mes_server.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class EquipmentController : ControllerBase
     {
@@ -48,9 +51,25 @@ namespace mes_server.Controllers
         [HttpPost("downtime/reason")]
         public async Task<IActionResult> RegisterDowntimeReason([FromBody] RegisterDowntimeReasonRequest request)
         {
+            request.UserID = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrWhiteSpace(request.UserID))
+            {
+                return Unauthorized(new { Message = "로그인 사용자 정보를 확인할 수 없습니다." });
+            }
+
             var success = await _equipmentService.RegisterDowntimeReasonAsync(request);
             if (!success) return BadRequest("비가동 사유 등록에 실패했습니다.");
             return Ok(new { Message = "비가동 사유가 성공적으로 등록되었습니다." });
+        }
+
+        [HttpGet("downtime-history")]
+        public async Task<IActionResult> GetDowntimeHistory(
+            [FromQuery] string? equipmentId,
+            [FromQuery] DateTime? startAt,
+            [FromQuery] DateTime? endAt)
+        {
+            var result = await _equipmentService.GetDowntimeLogsAsync(equipmentId, startAt, endAt);
+            return Ok(result);
         }
 
         [HttpGet("{id}/downtime-history")]

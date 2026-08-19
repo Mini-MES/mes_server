@@ -7,6 +7,7 @@
         public string EquipmentName { get; set; } = null!;
         public string Status { get; set; } = null!;
         public string? CurrentLotID { get; set; }
+        public string? CurrentOperatorID { get; set; }
         public long TotalRunningSeconds { get; set; }
         public long TotalDowntimeSeconds { get; set; }
         public DateTime LastStatusChangedAt { get; set; }

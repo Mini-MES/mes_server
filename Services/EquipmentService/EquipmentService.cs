@@ -1,5 +1,6 @@
 using mes_server.Data;
 using mes_server.Hubs;
+using mes_server.Models.Analytics;
 using mes_server.Models.DTOs.Analytics;
 using mes_server.Models.DTOs.MasterData;
 using mes_server.Models.Enum;
@@ -44,8 +45,19 @@ namespace mes_server.Services.EquipmentService
 
             var lotChanged =!string.IsNullOrEmpty(request.CurrentLotID) && equipment.CurrentLotId != request.CurrentLotID;
 
+            _logger.LogInformation(
+                "[설비 상태 변경 요청] Equipment={EquipmentId}, OldStatus={OldStatus}, RequestedStatus={NewStatus}, CurrentLot={CurrentLotId}",
+                equipment.EquipmentID,
+                oldStatus,
+                newStatus,
+                equipment.CurrentLotId);
+
             if (oldStatus == newStatus && !lotChanged)
             {
+                _logger.LogInformation(
+                    "[설비 상태 변경 생략] Equipment={EquipmentId}, Status={Status}, Reason=동일 상태",
+                    equipment.EquipmentID,
+                    oldStatus);
                 return true;
             }
 
@@ -94,6 +106,12 @@ namespace mes_server.Services.EquipmentService
             {
                 await _equipmentRepository.SaveChangesAsync();
 
+                _logger.LogInformation(
+                    "[설비 상태 DB 반영 완료] Equipment={EquipmentId}, Status={Status}, CurrentLot={CurrentLotId}",
+                    equipment.EquipmentID,
+                    equipment.Status,
+                    equipment.CurrentLotId);
+
                 try
                 {
                     await _hubContext.Clients.All.SendAsync("ReceiveEquipmentStatusChanged", new EquipmentDto
@@ -102,6 +120,7 @@ namespace mes_server.Services.EquipmentService
                         EquipmentName = equipment.Name,
                         Status = equipment.Status,
                         CurrentLotID = equipment.CurrentLotId,
+                        CurrentOperatorID = equipment.CurrentOperatorId,
                         TotalRunningSeconds = equipment.TotalRunningSeconds,
                         TotalDowntimeSeconds = equipment.TotalDowntimeSeconds,
                         LastStatusChangedAt = equipment.LastStatusChangedAt
@@ -126,6 +145,7 @@ namespace mes_server.Services.EquipmentService
                 EquipmentName = e.Name,
                 Status = e.Status,
                 CurrentLotID = e.CurrentLotId,
+                CurrentOperatorID = e.CurrentOperatorId,
                 TotalRunningSeconds = e.TotalRunningSeconds,
                 TotalDowntimeSeconds = e.TotalDowntimeSeconds,
                 LastStatusChangedAt = e.LastStatusChangedAt
@@ -139,6 +159,37 @@ namespace mes_server.Services.EquipmentService
                 .Include(dl => dl.User)
                 .Where(dl => dl.EquipmentID == equipmentId)
                 .OrderByDescending(dl => dl.StartedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<DowntimeLog>> GetDowntimeLogsAsync(
+            string? equipmentId = null,
+            DateTime? startAt = null,
+            DateTime? endAt = null)
+        {
+            var query = _context.DowntimeLogs
+                .AsNoTracking()
+                .Include(log => log.DowntimeReason)
+                .Include(log => log.User)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(equipmentId))
+            {
+                query = query.Where(log => log.EquipmentID == equipmentId);
+            }
+
+            if (startAt.HasValue)
+            {
+                query = query.Where(log => (log.EndedAt ?? DateTime.UtcNow) >= startAt.Value);
+            }
+
+            if (endAt.HasValue)
+            {
+                query = query.Where(log => log.StartedAt <= endAt.Value);
+            }
+
+            return await query
+                .OrderByDescending(log => log.StartedAt)
                 .ToListAsync();
         }
 
@@ -167,6 +218,7 @@ namespace mes_server.Services.EquipmentService
                 EquipmentName = equipment.Name,
                 Status = equipment.Status,
                 CurrentLotID = equipment.CurrentLotId,
+                CurrentOperatorID = equipment.CurrentOperatorId,
                 TotalRunningSeconds = equipment.TotalRunningSeconds,
                 TotalDowntimeSeconds = equipment.TotalDowntimeSeconds,
                 LastStatusChangedAt = equipment.LastStatusChangedAt,
@@ -270,8 +322,75 @@ namespace mes_server.Services.EquipmentService
             };
         }
 
+        private async Task<Dictionary<(string EquipmentID, DateOnly WorkDate), int>> GetDailyDowntimeMinutesAsync(
+            IReadOnlyCollection<DailyEquipmentProduction> dailyProductions)
+        {
+            if (dailyProductions.Count == 0)
+            {
+                return new Dictionary<(string, DateOnly), int>();
+            }
+
+            var koreaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Korea Standard Time");
+            var equipmentIds = dailyProductions.Select(d => d.EquipmentID).Distinct().ToList();
+            var minWorkDate = dailyProductions.Min(d => d.WorkDate);
+            var maxWorkDate = dailyProductions.Max(d => d.WorkDate);
+
+            var firstLocalStart = DateTime.SpecifyKind(
+                minWorkDate.ToDateTime(TimeOnly.MinValue),
+                DateTimeKind.Unspecified);
+            var lastLocalEnd = DateTime.SpecifyKind(
+                maxWorkDate.ToDateTime(TimeOnly.MinValue).AddMinutes(960),
+                DateTimeKind.Unspecified);
+
+            var firstUtcStart = TimeZoneInfo.ConvertTimeToUtc(firstLocalStart, koreaTimeZone);
+            var lastUtcEnd = TimeZoneInfo.ConvertTimeToUtc(lastLocalEnd, koreaTimeZone);
+
+            var logs = await _context.DowntimeLogs
+                .AsNoTracking()
+                .Where(log =>
+                    equipmentIds.Contains(log.EquipmentID) &&
+                    log.StartedAt < lastUtcEnd &&
+                    (log.EndedAt == null || log.EndedAt > firstUtcStart))
+                .ToListAsync();
+
+            var result = new Dictionary<(string EquipmentID, DateOnly WorkDate), int>();
+            var nowUtc = DateTime.UtcNow;
+
+            foreach (var daily in dailyProductions)
+            {
+                var localStart = DateTime.SpecifyKind(
+                    daily.WorkDate.ToDateTime(TimeOnly.MinValue),
+                    DateTimeKind.Unspecified);
+                var localEnd = localStart.AddMinutes(daily.PlannedProductionMinutes);
+                var utcStart = TimeZoneInfo.ConvertTimeToUtc(localStart, koreaTimeZone);
+                var utcEnd = TimeZoneInfo.ConvertTimeToUtc(localEnd, koreaTimeZone);
+
+                var downtimeSeconds = logs
+                    .Where(log => log.EquipmentID == daily.EquipmentID)
+                    .Sum(log =>
+                    {
+                        var overlapStart = log.StartedAt > utcStart ? log.StartedAt : utcStart;
+                        var logEnd = log.EndedAt ?? nowUtc;
+                        var overlapEnd = logEnd < utcEnd ? logEnd : utcEnd;
+
+                        return overlapEnd > overlapStart
+                            ? (overlapEnd - overlapStart).TotalSeconds
+                            : 0;
+                    });
+
+                var downtimeMinutes = Math.Min(
+                    daily.PlannedProductionMinutes,
+                    (int)Math.Floor(downtimeSeconds / 60));
+
+                result[(daily.EquipmentID, daily.WorkDate)] = downtimeMinutes;
+            }
+
+            return result;
+        }
+
         public async Task<IEnumerable<DailyEquipmentProductionDto>> GetDailyEquipmentProductionsAsync(string? equipmentId = null, DateOnly? startDate = null, DateOnly? endDate = null)
         {
+
             var query = _context.DailyEquipmentProductions
                 .Include(d => d.Equipment)
                 .AsQueryable();
@@ -296,16 +415,25 @@ namespace mes_server.Services.EquipmentService
                 .ThenBy(d => d.EquipmentID)
                 .ToListAsync();
 
+            var dailyDowntimeMinutes = await GetDailyDowntimeMinutesAsync(list);
+
             return list.Select(d =>
             {
+                var downtimeMinutes = dailyDowntimeMinutes.TryGetValue(
+                    (d.EquipmentID, d.WorkDate),
+                    out var calculatedDowntime)
+                    ? calculatedDowntime
+                    : 0;
+                var operatingMinutes = Math.Max(0, d.PlannedProductionMinutes - downtimeMinutes);
+
                 // 1. 시간 가동률 (%) = 실가동시간 / 계획가동시간 * 100
                 double availability = d.PlannedProductionMinutes > 0
-                    ? Math.Min(100.0, Math.Round((double)d.OperatingMinutes / d.PlannedProductionMinutes * 100.0, 1))
+                    ? Math.Min(100.0, Math.Round((double)operatingMinutes / d.PlannedProductionMinutes * 100.0, 1))
                     : 0.0;
 
                 // 2. 성능 효율 (%) = (생산수량 * 이론 사이클타임) / 실가동시간 * 100
-                double performance = d.OperatingMinutes > 0
-                    ? Math.Min(100.0, Math.Round(((double)d.IdealCycleTimeMinutes * d.TotalProducedQty) / d.OperatingMinutes * 100.0, 1))
+                double performance = operatingMinutes > 0
+                    ? Math.Min(100.0, Math.Round(((double)d.IdealCycleTimeMinutes * d.TotalProducedQty) / operatingMinutes * 100.0, 1))
                     : 0.0;
 
                 // 3. 양품률 (%) = 양품수량 / 총생산수량 * 100
@@ -323,8 +451,8 @@ namespace mes_server.Services.EquipmentService
                     EquipmentID = d.EquipmentID,
                     EquipmentName = d.Equipment?.Name ?? d.EquipmentID,
                     PlannedProductionMinutes = d.PlannedProductionMinutes,
-                    OperatingMinutes = d.OperatingMinutes,
-                    DowntimeMinutes = d.DowntimeMinutes,
+                    OperatingMinutes = operatingMinutes,
+                    DowntimeMinutes = downtimeMinutes,
                     TotalProducedQty = d.TotalProducedQty,
                     GoodQty = d.GoodQty,
                     DefectQty = d.DefectQty,
@@ -371,7 +499,29 @@ namespace mes_server.Services.EquipmentService
                 });
             }
 
+<<<<<<< Updated upstream
             await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetryList);
+=======
+            var today = DateOnly.FromDateTime(DateTime.Now);
+
+            var daily = await _context.DailyEquipmentProductions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(d => d.EquipmentID == equipmentId && d.WorkDate == today);
+
+            var telemetry = new[]
+            {
+                new
+                {
+                    EquipmentId = equipment.EquipmentID,
+                    Temperature = Math.Round(temperature, 1),
+                    Status = equipment.Status,
+                    TotalCount = daily?.GoodQty ?? 0,
+                    Timestamp = timestamp
+                }
+            };
+
+            await _hubContext.Clients.All.SendAsync("ReceiveEquipmentTelemetryList", telemetry);
+>>>>>>> Stashed changes
         }
 
         public async Task AddRunningTimeAsync(string equipmentId, int seconds = 3, bool autoSave = true)
