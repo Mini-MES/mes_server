@@ -178,10 +178,12 @@ namespace mes_server.Controllers
 
         // 단순 실적 등록
         [HttpPost("performance/register")]
-        public async Task<IActionResult> RegisterPerformance([FromBody] PerformanceRegisterDto registerDto)
+        public async Task<IActionResult> RegisterPerformance(
+            [FromBody] PerformanceRegisterDto registerDto,
+            [FromQuery] string? equipmentId = null)
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "system";
-            var result = await _performanceService.RegisterPerformanceAsync(registerDto, userId);
+            var result = await _performanceService.RegisterPerformanceAsync(registerDto, userId, equipmentId: equipmentId);
 
             try
             {

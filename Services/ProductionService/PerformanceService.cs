@@ -16,6 +16,8 @@ namespace mes_server.Services.ProductionService
 {
     public class PerformanceService : IPerformanceService
     {
+        private const double SimulationDefectRate = 0.03;
+
         private readonly IPerformanceRepository _performanceRepository;
         private readonly ILotRepository _lotRepository;
         private readonly IGenericRepository<WorkOrder> _workOrderRepository;
@@ -85,12 +87,9 @@ namespace mes_server.Services.ProductionService
             await _inventoryService.ConsumeMaterialByProcessAsync(perf.WorkOrderID, perf.ProcessID, perf.InputQty, autoSave: false);
 
             workOrder.TotalBadQty += perf.BadQty;
+            lot.TotalBadQty += perf.BadQty;
 
-            if (perf.BadQty > 0)
-            {
-                lot.Status = LotStatus.HOLD;
-            }
-            else if (lot.Status == LotStatus.RELEASED)
+            if (lot.Status == LotStatus.RELEASED)
             {
                 lot.Status = LotStatus.WIP;
             }
@@ -179,15 +178,19 @@ namespace mes_server.Services.ProductionService
             }
 
             var actualProductionQty = Math.Min(productionQty, remainingQty);
+            var badQty = Enumerable.Range(0, actualProductionQty)
+                .Count(_ => Random.Shared.NextDouble() < SimulationDefectRate);
+            var goodQty = actualProductionQty - badQty;
 
             var registerDto = new PerformanceRegisterDto
             {
                 WorkOrderID = lot.OrderID,
                 LotID = lot.LotID,
                 ProcessID = lot.CurrentProcessID,
-                GoodQty = actualProductionQty,
-                BadQty = 0,
+                GoodQty = goodQty,
+                BadQty = badQty,
                 InputQty = actualProductionQty,
+                ReasonCode = badQty > 0 ? ReasonCode.SCRATCH : null,
             };
 
             var perf = await RegisterPerformanceAsync(registerDto, currentOperatorId, autoSave: false, equipmentId);
@@ -195,7 +198,7 @@ namespace mes_server.Services.ProductionService
             await _equipmentService.AddRunningTimeAsync(equipmentId, seconds: actualProductionQty*3, autoSave: false);
             await _performanceRepository.SaveChangesAsync();
 
-            var updatedProcessGoodQty = currentGoodQty + actualProductionQty;
+            var updatedProcessGoodQty = currentGoodQty + goodQty;
             var actualLotStatus = lot.Status;
             var actualWorkOrderStatus = workOrder.Status;
             var actualTotalGoodQty = workOrder.TotalGoodQty;
@@ -216,6 +219,20 @@ namespace mes_server.Services.ProductionService
             await _hubContext.Clients.All.SendAsync("DailyProductionUpdated");
             await _hubContext.Clients.All.SendAsync("OeeUpdated");
 
+            if (badQty > 0)
+            {
+                await _hubContext.Clients.All.SendAsync("DefectReported", new
+                {
+                    lotId = lot.LotID,
+                    workOrderId = lot.OrderID,
+                    processId = lot.CurrentProcessID,
+                    badQty,
+                    reasonCode = ReasonCode.SCRATCH.ToString(),
+                    reportedBy = currentOperatorId,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+
             if (lot.OrderID > 0)
             {
                 await _hubContext.Clients.All.SendAsync("WorkOrderUpdated", new
@@ -230,8 +247,8 @@ namespace mes_server.Services.ProductionService
             {
                 status = "UPDATED",
                 lotId = lot.LotID,
-                goodIncrement = actualProductionQty,
-                badIncrement = 0,
+                goodIncrement = goodQty,
+                badIncrement = badQty,
                 equipmentId = equipmentId
             });
 

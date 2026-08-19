@@ -42,6 +42,10 @@ namespace mes_server.Controllers
         [HttpGet("processes")]
         public async Task<IActionResult> GetProcesses() => Ok(await _masterDataService.GetProcessListAsync());
 
+        [HttpGet("products/{productId}/processes")]
+        public async Task<IActionResult> GetProductProcesses([FromRoute] string productId)
+            => Ok(await _masterDataService.GetOrderedProcessesForProductAsync(productId));
+
         [HttpPost("processes")]
         public async Task<IActionResult> CreateProcess([FromBody] ProcessCreateDto createDto)
         {
